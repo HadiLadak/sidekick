@@ -1,6 +1,9 @@
 import type { Lang } from "./i18n";
 
 const en = {
+  voiceCommand: "Give a voice command",
+  finishCommand: "Finish speaking",
+  voiceHint: "Press Give a voice command when you want to speak. Your mic is off otherwise.",
   itsFixed: "It's fixed",
   pickHint: "When Chrome asks, pick the window or tab you need help with, not your entire screen.",
   wholeScreenTip: "You're sharing your whole screen, so Sid can see himself. That's fine. Move Sid out of the way and switch to the app you need help with.",
@@ -10,7 +13,7 @@ const en = {
   ctaButton: "Start live help",
   orScreenshot: "Or send Sid a screenshot",
   preTitle: "Sid will look and listen, like a helper next to you.",
-  preBody: "Just talk. Sid answers out loud, one step at a time. You can interrupt anytime.",
+  preBody: "Press Give a voice command to speak. Sid turns the mic off when answering, or after 15 seconds. Screen guidance continues with the mic off.",
   whatShare: "What should Sid look at?",
   screen: "My screen",
   screenSub: "For computers and laptops",

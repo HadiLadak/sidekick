@@ -160,7 +160,7 @@ export function LiveView({
   const [speaking, setSpeaking] = useState(false);
   const [scam, setScam] = useState<{ reason: string; severity: "scam" | "suspicious" } | null>(null);
   const [steps, setSteps] = useState<{ text: string; done: boolean }[]>([]);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
   const [pip, setPip] = useState<Window | null>(null);
   const [current, setCurrent] = useState<LiveSource>(source);
   const [switching, setSwitching] = useState(false);
@@ -183,6 +183,9 @@ export function LiveView({
       lang,
       onEvent: (e: LiveEvent) => {
         switch (e.type) {
+          case "mic":
+            setMuted(!e.listening);
+            break;
           case "status":
             setStatus(e.status);
             if (e.status === "live" && source === "screen") autoFloat.current?.();
@@ -334,9 +337,7 @@ export function LiveView({
   }
 
   function toggleMute() {
-    const m = !muted;
-    setMuted(m);
-    if (sidRef.current) sidRef.current.muted = m;
+    sidRef.current?.setListening(muted);
   }
 
   async function switchTo(to: LiveSource) {
@@ -385,7 +386,7 @@ export function LiveView({
         </div>
         <div className="bubble min-h-20 flex-1 bg-surface p-3 ring-1 ring-line" aria-live="polite" lang={captionLang(sidLine, lang)} dir="auto">
           <p className={cn("leading-snug font-bold text-ink", simple || pip ? "text-xl" : "text-2xl")}>
-            {sidLine || (status === "connecting" ? c.connecting : c.listening)}
+            {sidLine || (status === "connecting" ? c.connecting : muted ? c.voiceHint : c.listening)}
           </p>
           {userLine && (
             <p className="mt-2 text-base text-ink-soft" dir="auto">
@@ -521,11 +522,12 @@ export function LiveView({
         <button
           type="button"
           onClick={toggleMute}
-          aria-pressed={muted}
+          aria-pressed={!muted}
+          disabled={status !== "live"}
           className="flex h-12 items-center gap-2 rounded-full bg-surface px-4 font-semibold text-ink ring-1 ring-line aria-pressed:bg-caution-bg aria-pressed:ring-caution"
         >
           {muted ? <MicOff className="size-5" aria-hidden="true" /> : <Mic className="size-5" aria-hidden="true" />}
-          {muted ? c.unmute : c.mute}
+          {muted ? c.voiceCommand : c.finishCommand}
         </button>
         {!pip && docPiP() && (
           <button

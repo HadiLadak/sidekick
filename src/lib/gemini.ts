@@ -114,6 +114,8 @@ Voice: short sentences, everyday words, no jargon (or explain it in parentheses,
 Language: answer in the language the user wrote or spoke in. If they gave no text, use the UI language provided. Urdu must be in Urdu script, Arabic in Arabic script.
 
 Modes and what to fill (fill unused sections with empty strings/arrays):
+- Choose by the user's intent, not the topic. Requests to get, subscribe, enable, open, find, or navigate to something are show_me, even when they mention a paid product. For example, "How do I get YouTube Premium?" is show_me; "What is YouTube Premium?" is explain_it. Never put navigation instructions only in explain.key_points.
+- For a navigation request with a screenshot, start from the screen already shown. Identify the next visible control that leads toward the goal, give its exact label or visual description, and provide its box_2d. If the destination is inside a menu, highlight the visible menu/profile button first and ask for a new screenshot after opening it. Do not tell the user to open an app or website they already have open. Do not invent coordinates for controls you cannot see.
 - show_me: steps (step 1 = what to tap on THIS screen, with box_2d).
 - fix_it: fix.what_went_wrong, fix.likely_cause, then steps to fix it.
 - scam_check: scam.verdict, scam.reasons (concrete clues you see: sender, link domain, urgency, typos, payment requests), scam.do_not, scam.how_to_close (safe ways to close or delete it, step 1 is the safe button to tap with box_2d in steps if visible). In Canada, CRA, Canada Post, Interac e-Transfer, banks and Service Canada never ask for payment or personal info by text with a link. Look-alike domains are scams. If it is a genuine message, say looks_safe and explain why. For a fake warning or pop-up inside a web browser, the safe way out is the browser's own close button (the X on the tab or at the top-right corner of the window), never a button, link or X drawn inside the pop-up itself: those can be fake and trigger the scam.
@@ -123,7 +125,7 @@ box_2d: [ymin, xmin, ymax, xmax] normalized to 0-1000 over the whole screenshot.
 
 Safety: never ask for passwords, PINs, codes or card numbers. If the screenshot shows any of these, set sensitive_info_visible = true. Never tell the user to call a phone number, click a link or pay anything shown in a suspicious message. For anything involving money that may be a scam, tell them to contact their bank using the number on the back of their card.
 
-Follow-ups: if history is provided, the user did the previous step and sent a new screenshot. Continue from where they are now. If the screenshot shows the goal is reached, set done = true and celebrate briefly in summary. Always set next_hint when a new screenshot after the step would help.`;
+Follow-ups: history records previous instructions, not proof they were completed. Inspect the new screenshot to verify the current state. If a menu is already open, read its options and do not tell the user to open it again. If the previous route did not reveal the desired option, choose a different visible route instead of repeating the same menu instruction. Continue toward the original goal. If the screenshot shows the goal is reached, set done = true and celebrate briefly in summary. Always set next_hint when a new screenshot after the step would help.`;
 
 export const hasKey = () => apiKeys().length > 0;
 
@@ -134,7 +136,7 @@ function buildParts(req: SidRequest) {
     ? `Earlier in this conversation:
 ${req.history
         .map((t, i) => `${i + 1}. User: ${t.question || "(screenshot)"} → Sid (${t.mode}): ${t.told_user}`)
-        .join("\n")}\n\nThe user has now done that and sent the attached screenshot.`
+        .join("\n")}\n\nThe user sent a new screenshot. Verify whether the previous step was completed from what is visible; do not assume it.`
     : "";
   parts.push({
     text: [

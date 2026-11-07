@@ -13,6 +13,7 @@ export interface Frame {
 }
 
 export type LiveEvent =
+  | { type: "mic"; listening: boolean }
   | { type: "status"; status: "connecting" | "live" | "ended" }
   | { type: "source"; source: LiveSource }
   /** What kind of screen is shared: "monitor" means the whole screen, so Sid can see himself */
@@ -99,6 +100,12 @@ export class LiveSid {
   private lastThumb: Uint8ClampedArray | null = null;
   private changedAt = 0;
   private settledSent = true;
+  private changeStartedAt = 0;
+  private progressQueued = false;
+  private lastProgressCheck = 0;
+  private lastInstruction = "";
+  private taskStarted = false;
+  private modelBusy = false;
   private lastWatch = 0;
   private latest: Frame | null = null;
   private sidText = "";
@@ -118,11 +125,29 @@ export class LiveSid {
   private reconnects = 0;
   /** Frame sending: only on change, at most every 2s, plus a keep-alive and one when the user speaks */
   private lastSent = 0;
+  private sentFrame: Frame | null = null;
+  private micTimer: ReturnType<typeof setTimeout> | null = null;
   private dirty = true;
   private wantFrame = false;
   private sendCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
   private connectedAt = Date.now();
-  muted = false;
+  muted = true;
+
+  /** One voice command per click; ambient noise cannot interrupt guidance. */
+  setListening(listening: boolean) {
+    if (this.micTimer) clearTimeout(this.micTimer);
+    this.micTimer = null;
+    if (listening) {
+      this.flushAudio();
+      this.wantFrame = true;
+    }
+    const wasMuted = this.muted;
+    this.muted = !listening;
+    this.mic?.getAudioTracks().forEach((track) => { track.enabled = listening; });
+    if (!listening && !wasMuted) this.session?.sendRealtimeInput({ audioStreamEnd: true });
+    this.opts.onEvent({ type: "mic", listening });
+    if (listening) this.micTimer = setTimeout(() => this.setListening(false), 15000);
+  }
 
   constructor(
     private opts: {
@@ -168,6 +193,7 @@ export class LiveSid {
       this.mic = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
       });
+      this.mic.getAudioTracks().forEach((track) => { track.enabled = false; });
 
       await resumed;
       this.analyser = this.outCtx.createAnalyser();
@@ -344,11 +370,17 @@ export class LiveSid {
       if (shown) emit({ type: "sid-caption", text: shown, final: false });
     }
     if (sc?.inputTranscription?.text) {
+      this.taskStarted = true;
       this.userText += sc.inputTranscription.text;
       emit({ type: "user-caption", text: this.userText.trim(), final: false });
     }
     if (sc?.turnComplete || sc?.interrupted) {
+      this.modelBusy = false;
       const spoke = this.turnAudioSec > 0;
+      if (spoke && this.taskStarted && this.sidText.trim()) {
+        this.stepPending = true;
+        this.lastInstruction = this.sidText.trim();
+      }
       emit({ type: "turn-end", highlighted: this.highlightedThisTurn, spoke });
       this.highlightedThisTurn = false;
       // Text with no voice behind it was never said aloud: don't show it
@@ -365,18 +397,20 @@ export class LiveSid {
         const a = (f.args ?? {}) as Record<string, unknown>;
         if (f.name === "highlight") {
           this.stepPending = true;
+          this.lastInstruction = String(a.instruction ?? "");
           this.highlightedThisTurn = true;
           emit({
             type: "highlight",
             box: Array.isArray(a.box_2d) ? (a.box_2d as number[]) : [],
             label: String(a.label ?? ""),
             instruction: String(a.instruction ?? ""),
-            frame: this.latest,
+            frame: this.sentFrame,
           });
         } else if (f.name === "scam_alert") {
           emit({ type: "scam", reason: String(a.reason ?? ""), severity: a.severity === "suspicious" ? "suspicious" : "scam" });
         } else if (f.name === "step_done") {
           this.stepPending = !a.all_done;
+          if (a.all_done) this.taskStarted = false;
           emit({ type: "step-done", step: String(a.step ?? ""), allDone: !!a.all_done });
         } else if (f.name === "ask_family") {
           emit({ type: "ask-family", summary: String(a.summary ?? "") });
@@ -393,6 +427,7 @@ export class LiveSid {
   }
 
   private play(b64: string) {
+    if (!this.muted) this.setListening(false);
     if (!this.outCtx || !this.analyser) return;
     const pcm = new Int16Array(fromBase64(b64));
     this.turnAudioSec += pcm.length / 24000;
@@ -447,15 +482,18 @@ export class LiveSid {
     if (!ctx) return;
     ctx.drawImage(v, 0, 0, w, h);
 
-    // Cheap change detection on a 24x24 thumbnail
-    this.thumb.width = 24;
-    this.thumb.height = 24;
+    // More detail and all colour channels preserve small menu changes.
+    this.thumb.width = 96;
+    this.thumb.height = 96;
     const tctx = this.thumb.getContext("2d", { willReadFrequently: true })!;
-    tctx.drawImage(this.canvas, 0, 0, 24, 24);
-    const px = tctx.getImageData(0, 0, 24, 24).data;
-    let diff = 0;
-    if (this.lastThumb) for (let i = 0; i < px.length; i += 4) diff += Math.abs(px[i] - this.lastThumb[i]);
-    const changed = !this.lastThumb || diff / 576 > 6;
+    tctx.drawImage(this.canvas, 0, 0, 96, 96);
+    const px = tctx.getImageData(0, 0, 96, 96).data;
+    let changedPixels = 0;
+    if (this.lastThumb) for (let i = 0; i < px.length; i += 4) {
+      const diff = Math.abs(px[i] - this.lastThumb[i]) + Math.abs(px[i + 1] - this.lastThumb[i + 1]) + Math.abs(px[i + 2] - this.lastThumb[i + 2]);
+      if (diff > 60) changedPixels++;
+    }
+    const changed = !this.lastThumb || changedPixels >= 12;
     this.lastThumb = px;
     if (changed) this.dirty = true;
 
@@ -476,6 +514,7 @@ export class LiveSid {
       this.sendCanvas.getContext("2d")?.drawImage(this.canvas, 0, 0, this.sendCanvas.width, this.sendCanvas.height);
       const small = this.sendCanvas.toDataURL("image/jpeg", 0.6).split(",")[1];
       this.session.sendRealtimeInput({ video: { data: small, mimeType: "image/jpeg" } });
+      this.sentFrame = { ...frame, url: `data:image/jpeg;base64,${small}`, data: small, width: this.sendCanvas.width, height: this.sendCanvas.height };
       this.lastSent = now;
       this.dirty = false;
       this.wantFrame = false;
@@ -484,22 +523,36 @@ export class LiveSid {
     }
 
     if (changed) {
+      if (this.settledSent) this.changeStartedAt = now;
       this.changedAt = now;
       this.settledSent = false;
-    } else if (!this.settledSent && now - this.changedAt > 1200) {
-      // The screen changed and has now settled: let Sid react like a person would
+    }
+    if (!this.settledSent && (now - this.changedAt > 1200 || now - this.changeStartedAt >= 4000)) {
+      // A playing video must not postpone checks forever.
       this.settledSent = true;
-      this.onSettled(frame);
+      this.progressQueued = true;
+      void this.onSettled(frame);
+    }
+    // Keep a deferred check while Sid speaks. Periodic checks also catch subtle changes.
+    if (this.modelBusy && now - this.lastProgressCheck >= 20000) this.modelBusy = false;
+    if (this.stepPending && this.muted && !this.speaking && !this.modelBusy &&
+        now - this.lastProgressCheck >= 8000 &&
+        (this.progressQueued || now - this.lastProgressCheck >= 12000) && this.session) {
+      // Send the exact current picture before asking the model to inspect it.
+      this.session.sendRealtimeInput({ video: { data: frame.data, mimeType: "image/jpeg" } });
+      this.sentFrame = frame;
+      this.session.sendClientContent({ turns: [{ role: "user", parts: [{ text:
+        `[Automatic screen progress check. Previous instruction: ${this.lastInstruction.slice(0, 700)}. Inspect the attached latest screen. If it visibly shows the expected result, call step_done and give the next single step with highlight. An already-open menu must not be opened again. Video motion alone is not progress. If unchanged or uncertain, stay silent; do not repeat the instruction or ask the user to say done.]`,
+      }] }], turnComplete: true });
+      this.modelBusy = true;
+      this.progressQueued = false;
+      this.lastProgressCheck = now;
+      this.lastSent = now;
     }
   }
 
   private async onSettled(frame: Frame) {
     if (this.stopped || !this.session) return;
-    if (this.stepPending && !this.speaking) {
-      this.session.sendRealtimeInput({
-        text: "[The screen just changed. If the user finished the step you gave, call step_done and give the next single step with highlight. If not, stay quiet.]",
-      });
-    }
     if (Date.now() - this.lastWatch < 4000) return;
     this.lastWatch = Date.now();
     try {
@@ -576,6 +629,7 @@ export class LiveSid {
       this.videoEl.srcObject = next;
       await this.videoEl.play().catch(() => {});
       this.lastThumb = null;
+      this.progressQueued = false;
       this.settledSent = true;
       this.flushAudio();
       this.opts.onEvent({ type: "source", source: to });
@@ -618,6 +672,7 @@ export class LiveSid {
     this.reconnecting = true;
     this.session = null;
     this.connected = false;
+    this.modelBusy = false;
     this.flushAudio();
     // Resume on the same model first (Google may need a moment to release the old connection:
     // "session is already connected to an existing client"), then fall back to a fresh session.
@@ -649,12 +704,14 @@ export class LiveSid {
 
   /** Send a typed message (for accessibility, or when the mic is muted). */
   say(text: string) {
+    if (text.trim()) this.taskStarted = true;
     this.session?.sendRealtimeInput({ text });
   }
 
   stop(emitEnded = true) {
     if (this.stopped) return;
     this.stopped = true;
+    if (this.micTimer) clearTimeout(this.micTimer);
     if (this.frameTimer) clearInterval(this.frameTimer);
     this.flushAudio();
     try {

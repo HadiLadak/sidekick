@@ -46,8 +46,9 @@ export function TapSpot({
   let overlay = null;
   if (px) {
     // Ellipse that hugs the target: round for icons, wide for list rows and buttons.
-    const rx = Math.max(px.w * 0.62 + u * 1.6, u * 5.5);
-    const ry = Math.max(px.h * 0.62 + u * 1.6, u * 5.5);
+    // An ellipse needs radii > box dimension / sqrt(2) to enclose its corners.
+    const rx = Math.max(px.w * 0.8 + u * 1.6, u * 5.5);
+    const ry = Math.max(px.h * 0.8 + u * 1.6, u * 5.5);
     const stroke = u * 1.6; // half of the widest ring stroke, plus pulse room
 
     // Arrow comes from the roomier side, angled toward the middle of the screen.
