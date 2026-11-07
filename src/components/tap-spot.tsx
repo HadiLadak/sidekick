@@ -35,18 +35,22 @@ export function TapSpot({
 
   let overlay = null;
   if (px) {
-    const r = Math.max(Math.hypot(px.w, px.h) / 2 + u * 1.6, u * 5.5);
+    // Ellipse that hugs the target: round for icons, wide for list rows and buttons.
+    const rx = Math.max(px.w * 0.62 + u * 1.6, u * 5.5);
+    const ry = Math.max(px.h * 0.62 + u * 1.6, u * 5.5);
     // Arrow comes from the roomier side, angled toward the middle of the screen.
     const fromAbove = px.cy > height * 0.32;
     const sx = px.cx < width / 2 ? 1 : -1;
-    const dist = r + u * 16;
+    const dist = ry + u * 16;
     let tx = px.cx + sx * u * 14;
     let ty = px.cy + (fromAbove ? -dist : dist);
     tx = Math.min(width - u * 4, Math.max(u * 4, tx));
     ty = Math.min(height - u * 6, Math.max(u * 6, ty));
     const ang = Math.atan2(px.cy - ty, px.cx - tx);
-    const hx = px.cx - Math.cos(ang) * (r + u * 1.4);
-    const hy = px.cy - Math.sin(ang) * (r + u * 1.4);
+    // Distance from the centre to the ellipse edge along the arrow's angle
+    const edge = (rx * ry) / Math.hypot(ry * Math.cos(ang), rx * Math.sin(ang));
+    const hx = px.cx - Math.cos(ang) * (edge + u * 1.4);
+    const hy = px.cy - Math.sin(ang) * (edge + u * 1.4);
     const mx = (tx + hx) / 2 + Math.sin(ang) * u * 5 * sx;
     const my = (ty + hy) / 2 - Math.cos(ang) * u * 5 * sx;
     const headAng = Math.atan2(hy - my, hx - mx);
@@ -69,22 +73,23 @@ export function TapSpot({
         <defs>
           <mask id={`dim-${id}`}>
             <rect width={width} height={height} fill="white" />
-            <circle cx={px.cx} cy={px.cy} r={r} fill="black" />
+            <ellipse cx={px.cx} cy={px.cy} rx={rx} ry={ry} fill="black" />
           </mask>
         </defs>
         {/* gently dim everything except the spot */}
         <rect width={width} height={height} fill="#0b1030" opacity="0.28" mask={`url(#dim-${id})`} />
-        <circle
+        <ellipse
           className="tap-ring-pulse"
           cx={px.cx}
           cy={px.cy}
-          r={r}
+          rx={rx}
+          ry={ry}
           fill="none"
           stroke={ringColor}
           strokeWidth={u * 2.2}
         />
-        <circle cx={px.cx} cy={px.cy} r={r} fill="none" stroke="#1b2452" strokeWidth={u * 2.6} />
-        <circle cx={px.cx} cy={px.cy} r={r} fill="none" stroke={ringColor} strokeWidth={u * 1.5} />
+        <ellipse cx={px.cx} cy={px.cy} rx={rx} ry={ry} fill="none" stroke="#1b2452" strokeWidth={u * 2.6} />
+        <ellipse cx={px.cx} cy={px.cy} rx={rx} ry={ry} fill="none" stroke={ringColor} strokeWidth={u * 1.5} />
         <g fill="none" strokeLinecap="round" strokeLinejoin="round">
           <path
             d={`M${tx} ${ty}Q${mx} ${my} ${hx} ${hy}`}
@@ -111,7 +116,7 @@ export function TapSpot({
           fontWeight={700}
           style={{ fontFamily: "var(--font-hand)", paintOrder: "stroke" }}
           fill="#1b2452"
-          stroke={ringColor}
+          stroke={tone === "safe" ? "#d6f5e5" : ringColor}
           strokeWidth={u * 1.6}
           strokeLinejoin="round"
         >

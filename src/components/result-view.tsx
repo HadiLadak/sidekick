@@ -247,6 +247,8 @@ export function ResultView({
         />
       )}
 
+      {r.mode === "scam_check" && <ScamReasons result={r} t={t} dir={dir} />}
+
       {showSteps && r.steps.length > 1 && (
         <div className="flex items-center justify-between gap-3">
           <button
@@ -350,6 +352,23 @@ export function ResultView({
   );
 }
 
+function ScamReasons({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "ltr" | "rtl" }) {
+  if (!r.scam.reasons.length) return null;
+  return (
+    <section lang={r.language} dir={dir} className="rounded-2xl bg-surface p-4 ring-1 ring-line">
+      <h2 className="text-sm font-bold text-ink-soft">{t.whyScam}</h2>
+      <ul className="mt-2 flex flex-col gap-2">
+        {r.scam.reasons.map((x, i) => (
+          <li key={i} className="flex gap-2 text-lg text-ink">
+            <span className="mt-2.5 size-2 shrink-0 rounded-full bg-ink" aria-hidden="true" />
+            <span>{x}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Verdict({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "ltr" | "rtl" }) {
   const v = r.scam.verdict as keyof typeof VERDICT;
   const V = VERDICT[v];
@@ -360,19 +379,6 @@ function Verdict({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "l
         <p className="text-3xl leading-tight font-bold">{t.verdict[v]}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {r.scam.reasons.length > 0 && (
-          <section className="rounded-2xl bg-surface p-4 ring-1 ring-line sm:col-span-2">
-            <h2 className="text-sm font-bold text-ink-soft">{t.whyScam}</h2>
-            <ul className="mt-2 flex flex-col gap-2">
-              {r.scam.reasons.map((x, i) => (
-                <li key={i} className="flex gap-2 text-lg text-ink">
-                  <span className="mt-2.5 size-2 shrink-0 rounded-full bg-ink" aria-hidden="true" />
-                  <span>{x}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
         {r.scam.do_not.length > 0 && (
           <section className="rounded-2xl bg-danger-bg p-4">
             <h2 className="text-sm font-bold text-danger">{t.doNot}</h2>

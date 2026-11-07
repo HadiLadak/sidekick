@@ -317,6 +317,20 @@ html[data-simple="true"] {
 .sid-bob {
   animation: var(--animate-bob);
 }
+.sid-mouth-talk {
+  display: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleY(var(--talk, 0.3));
+  transition: transform 60ms linear;
+}
+.sid-talking .sid-mouth-talk {
+  display: inline;
+}
+.sid-talking .sid-mouth {
+  display: none;
+}
+
 .dot {
   animation: dots 1.2s infinite;
 }

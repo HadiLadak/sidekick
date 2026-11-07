@@ -1,8 +1,10 @@
 "use client";
 
-import { RotateCcw, ShieldCheck } from "lucide-react";
+import { Radio, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { DEMOS, type Demo } from "@/lib/demos";
+import { LIVE_STRINGS } from "@/lib/live-i18n";
+import { liveSupported, type Frame, type LiveSource } from "@/lib/live-session";
 import { prepareImage, type PreparedImage } from "@/lib/image";
 import { usePrefs } from "@/lib/prefs";
 import { stopSpeaking } from "@/lib/speech";
@@ -11,11 +13,12 @@ import { Celebration } from "./celebration";
 import { Composer } from "./composer";
 import { FamilySheet } from "./family-sheet";
 import { Header } from "./header";
+import { LivePreflight, LiveView } from "./live-view";
 import { ModeGuide } from "./mode-guide";
 import { ResultView } from "./result-view";
 import { Sid } from "./sid";
 
-type Status = "idle" | "loading" | "result" | "error";
+type Status = "idle" | "loading" | "result" | "error" | "live-pre" | "live";
 type AskRequest = { text: string; image: PreparedImage | null; history: Turn[]; demo?: Demo };
 
 export function SidekickApp() {
@@ -31,6 +34,30 @@ export function SidekickApp() {
   const [notice, setNotice] = useState("");
   const [celebrating, setCelebrating] = useState(false);
   const [family, setFamily] = useState(false);
+  const [familyImage, setFamilyImage] = useState<PreparedImage | null>(null);
+  const [liveSource, setLiveSource] = useState<LiveSource>("screen");
+  const [canLive, setCanLive] = useState(false);
+  const lc = LIVE_STRINGS[prefs.lang];
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser capability check after mount
+    setCanLive(liveSupported());
+  }, []);
+
+  const frameToImage = (f: Frame): PreparedImage => ({ ...f, mimeType: "image/jpeg" });
+
+  function liveFailed(message: string, frame: Frame | null, lastQuestion: string) {
+    // Live help failed: fall back to screenshot help automatically, using the last frame Sid saw.
+    setNotice(`${message} ${lc.failed}`);
+    if (frame) {
+      const img = frameToImage(frame);
+      setImage(img);
+      setProblem(lastQuestion);
+      ask({ text: lastQuestion, image: img, history: [] });
+    } else {
+      setStatus("idle");
+    }
+  }
   const [lastRequest, setLastRequest] = useState<AskRequest | null>(null);
   const mainRef = useRef<HTMLElement>(null);
 
@@ -158,6 +185,34 @@ export function SidekickApp() {
               </div>
             </section>
 
+            {canLive && (
+              <section
+                aria-labelledby="live-cta"
+                className="relative overflow-hidden rounded-[1.75rem] bg-ink p-5 text-paper ring-1 ring-ink dark:bg-surface dark:text-ink dark:ring-line"
+              >
+                <div className="flex items-center gap-4">
+                  <span className="relative grid size-14 shrink-0 place-items-center rounded-2xl bg-mark text-on-mark">
+                    <Radio className="size-7" aria-hidden="true" />
+                    <span className="absolute -top-1 -end-1 size-3.5 rounded-full bg-danger ring-2 ring-ink motion-safe:animate-pulse dark:ring-surface" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 id="live-cta" className="text-2xl leading-tight font-bold">
+                      {lc.cta}
+                    </h2>
+                    <p className="opacity-85">{lc.ctaSub}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStatus("live-pre")}
+                  className="mt-4 h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark shadow-[0_0.25rem_0_0_#0b1030] active:translate-y-1 active:shadow-none"
+                >
+                  {lc.cta}
+                </button>
+              </section>
+            )}
+            {canLive && <h2 className="-mb-3 font-hand text-xl font-bold text-ink">{lc.orScreenshot}</h2>}
+
             <Composer
               t={t}
               speechLang={langMeta.speech}
@@ -224,6 +279,34 @@ export function SidekickApp() {
 
         {status === "loading" && <Thinking t={t} image={shownImage} />}
 
+        {status === "live-pre" && (
+          <LivePreflight
+            c={lc}
+            onCancel={() => setStatus("idle")}
+            onStart={(src) => {
+              setLiveSource(src);
+              setStatus("live");
+            }}
+          />
+        )}
+
+        {status === "live" && (
+          <LiveView
+            c={lc}
+            lang={prefs.lang}
+            source={liveSource}
+            simple={prefs.simple}
+            onEnd={() => setStatus((s) => (s === "live" ? "idle" : s))}
+            onFail={liveFailed}
+            onCelebrate={() => setCelebrating(true)}
+            onAskFamily={(summary, frame) => {
+              setProblem(summary);
+              setFamilyImage(frame ? frameToImage(frame) : null);
+              setFamily(true);
+            }}
+          />
+        )}
+
         {status === "error" && error && (
           <section role="alert" className="flex flex-col items-center gap-4 py-8 text-center">
             <Sid mood="worried" className="size-28" />
@@ -288,8 +371,11 @@ export function SidekickApp() {
           lang={prefs.lang}
           problem={problem}
           title={result?.title ?? ""}
-          image={shownImage}
-          onClose={() => setFamily(false)}
+          image={familyImage ?? shownImage}
+          onClose={() => {
+            setFamily(false);
+            setFamilyImage(null);
+          }}
         />
       )}
     </>

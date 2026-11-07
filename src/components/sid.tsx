@@ -49,12 +49,15 @@ export function Sid({
         </g>
       )}
 
+      {mood !== "celebrating" && (
+        <ellipse className="sid-mouth-talk" cx="60" cy="70" rx="9" ry="8" fill="#1b2452" />
+      )}
       {mood === "helping" && (
-        <path d="M47 66Q60 79 73 66" stroke="#1b2452" strokeWidth="4.5" strokeLinecap="round" fill="none" />
+        <path className="sid-mouth" d="M47 66Q60 79 73 66" stroke="#1b2452" strokeWidth="4.5" strokeLinecap="round" fill="none" />
       )}
       {mood === "thinking" && (
         <>
-          <path d="M51 70Q58 66 68 69" stroke="#1b2452" strokeWidth="4.5" strokeLinecap="round" fill="none" />
+          <path className="sid-mouth" d="M51 70Q58 66 68 69" stroke="#1b2452" strokeWidth="4.5" strokeLinecap="round" fill="none" />
           <path d="M66 30L84 27" stroke="#1b2452" strokeWidth="3.5" strokeLinecap="round" />
         </>
       )}
@@ -65,6 +68,7 @@ export function Sid({
             <path d="M69 28L87 33" />
           </g>
           <path
+            className="sid-mouth"
             d="M45 72q5-6 10 0t10 0t10 0"
             stroke="#1b2452"
             strokeWidth="4"
