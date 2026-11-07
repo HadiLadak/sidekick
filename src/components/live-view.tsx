@@ -114,7 +114,7 @@ export function LivePreflight({
         <button
           type="button"
           onClick={() => onStart(source)}
-          className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-mark px-6 text-lg font-bold text-on-mark shadow-[0_0.25rem_0_0_var(--ink)] active:translate-y-1 active:shadow-none"
+          className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-mark px-6 text-lg font-bold text-on-mark press"
         >
           <Mic className="size-5" aria-hidden="true" />
           {c.start}
@@ -445,7 +445,7 @@ export function LiveView({
           className={pip ? "[&_.tap-media]:max-h-[38vh]" : "[&_.tap-media]:max-h-[50vh] lg:col-start-1 lg:row-span-6 lg:row-start-2 lg:[&_.tap-media]:max-h-[72vh]"}
         />
       ) : (
-        <div className="grid aspect-video place-items-center rounded-[1.25rem] border-4 border-dashed border-line text-ink-soft lg:col-start-1 lg:row-span-6 lg:row-start-2">
+        <div className="grid aspect-video place-items-center rounded-2xl border-4 border-dashed border-line text-ink-soft lg:col-start-1 lg:row-span-6 lg:row-start-2">
           {c.waitingForScreen}
         </div>
       )}

@@ -10,13 +10,14 @@ export interface Prefs {
 }
 
 const KEY = "sid:prefs";
-const DEFAULT: Prefs = { lang: "en", simple: false, theme: null };
+// Simple mode is the default: big type, fewer choices. People can switch it off for more detail.
+const DEFAULT: Prefs = { lang: "en", simple: true, theme: null };
 
 function read(): Prefs {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || "{}");
     const lang = LANGS.some((l) => l.code === raw.lang) ? raw.lang : guessLang();
-    return { lang, simple: !!raw.simple, theme: raw.theme === "dark" || raw.theme === "light" ? raw.theme : null };
+    return { lang, simple: raw.simple !== false, theme: raw.theme === "dark" || raw.theme === "light" ? raw.theme : null };
   } catch {
     return DEFAULT;
   }

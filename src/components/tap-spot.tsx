@@ -139,7 +139,7 @@ export function TapSpot({
   return (
     <figure
       className={cn(
-        "relative mx-auto w-fit max-w-full overflow-hidden rounded-[1.25rem] border-4 border-ink bg-[#1b2452] shadow-[0_0.5rem_0_0_var(--surface-2)] dark:border-line",
+        "relative mx-auto w-fit max-w-full overflow-hidden rounded-2xl border-4 border-ink bg-[#1b2452] dark:border-line",
         className,
       )}
     >

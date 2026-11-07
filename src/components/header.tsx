@@ -28,21 +28,22 @@ export function Header({
       <button
         type="button"
         onClick={onHome}
-        className="flex items-center gap-2 rounded-full pe-2 font-hand text-2xl font-bold text-ink"
+        className="flex h-11 items-center gap-2 rounded-full pe-2 font-hand text-2xl leading-none font-bold text-ink"
         aria-label="Sid, home"
       >
-        <Sid className="size-10" animate={false} />
+        <Sid className="size-11" animate={false} />
         <span aria-hidden="true" translate="no" className="hidden min-[440px]:inline">Sid</span>
       </button>
 
-      <div className="ms-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-        <label className="relative flex h-11 items-center rounded-full bg-surface ps-2.5 pe-1 ring-1 ring-line focus-within:ring-2 focus-within:ring-sky">
+      {/* One joined control strip: same height, same edge, dividers between */}
+      <div className="ms-auto flex h-11 items-stretch divide-x divide-line overflow-hidden rounded-full bg-surface text-sm font-semibold text-ink ring-1 ring-line rtl:divide-x-reverse">
+        <label className="relative flex items-center gap-1.5 ps-3.5 pe-1 focus-within:bg-sky-bg">
           <Globe className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
           <span className="sr-only">{t.language}</span>
           <select
             value={prefs.lang}
             onChange={(e) => update({ lang: e.target.value as Lang })}
-            className="h-full max-w-[5.5rem] appearance-none bg-transparent ps-2 pe-1 text-sm font-semibold text-ink outline-none"
+            className="h-full max-w-[5.5rem] appearance-none bg-transparent pe-2 outline-none"
           >
             {LANGS.map((l) => (
               <option key={l.code} value={l.code} lang={l.code}>
@@ -57,14 +58,11 @@ export function Header({
           role="switch"
           aria-checked={prefs.simple}
           onClick={() => update({ simple: !prefs.simple })}
-          className="flex h-11 items-center gap-2 rounded-full bg-surface ps-3 pe-1.5 text-sm leading-tight font-semibold text-ink ring-1 ring-line transition-colors aria-checked:bg-ink aria-checked:text-paper aria-checked:ring-ink"
+          className="flex items-center gap-2 px-3 leading-tight outline-offset-[-3px] hover:bg-surface-2"
         >
           <span className="whitespace-nowrap">{t.simple}</span>
-          <span
-            aria-hidden="true"
-            className="relative h-7 w-12 rounded-full bg-surface-2 transition-colors in-aria-checked:bg-mark"
-          >
-            <span className="absolute top-1 start-1 size-5 rounded-full bg-ink-soft transition-transform duration-200 in-aria-checked:translate-x-5 in-aria-checked:bg-ink rtl:in-aria-checked:-translate-x-5" />
+          <span aria-hidden="true" className="relative h-6 w-10 rounded-full bg-surface-2 ring-1 ring-line transition-colors in-aria-checked:bg-mark in-aria-checked:ring-ink">
+            <span className="absolute top-1 start-1 size-4 rounded-full bg-ink-soft transition-transform duration-200 in-aria-checked:translate-x-4 in-aria-checked:bg-ink rtl:in-aria-checked:-translate-x-4" />
           </span>
         </button>
 
@@ -73,7 +71,7 @@ export function Header({
           aria-pressed={isDark}
           aria-label={t.theme}
           onClick={() => update({ theme: isDark ? "light" : "dark" })}
-          className="grid size-11 place-items-center rounded-full bg-surface text-ink ring-1 ring-line"
+          className="grid w-11 place-items-center outline-offset-[-3px] hover:bg-surface-2"
         >
           {isDark ? <Sun className="size-5" aria-hidden="true" /> : <Moon className="size-5" aria-hidden="true" />}
         </button>

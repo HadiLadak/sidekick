@@ -3,50 +3,84 @@ import type { Strings } from "@/lib/i18n";
 import type { Mode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-// Each bubble sits at its own slight angle, like notes stuck to a fridge.
-const ITEMS: { mode: Mode; icon: typeof Pointer; tone: string; tilt: string }[] = [
-  { mode: "show_me", icon: Pointer, tone: "bg-sky-bg text-sky", tilt: "-rotate-1 sm:me-10" },
-  { mode: "scam_check", icon: ShieldAlert, tone: "bg-danger-bg text-danger", tilt: "rotate-[0.8deg] sm:ms-10" },
-  { mode: "fix_it", icon: Wrench, tone: "bg-fix-bg text-fix", tilt: "rotate-[0.4deg] sm:me-6" },
-  { mode: "explain_it", icon: BookOpenText, tone: "bg-learn-bg text-learn", tilt: "-rotate-[1.2deg] sm:ms-14" },
+// Only scams get a colour of their own; the rest stay in the core ink / yellow / blue.
+const ITEMS: { mode: Mode; icon: typeof Pointer; tone: string }[] = [
+  { mode: "show_me", icon: Pointer, tone: "bg-mark text-on-mark" },
+  { mode: "scam_check", icon: ShieldAlert, tone: "bg-danger-bg text-danger" },
+  { mode: "fix_it", icon: Wrench, tone: "bg-surface-2 text-ink" },
+  { mode: "explain_it", icon: BookOpenText, tone: "bg-sky-bg text-sky" },
 ];
 
 /**
- * What Sid can do, told through real questions. Sid picks the mode itself, so the bubbles
- * only fill in the question box (nothing is sent until the person presses Ask).
+ * What Sid can do, told through real questions. Sid picks the mode itself, so a tap only
+ * fills in the question box; nothing is sent until the person presses the button.
+ * Simple mode: four big tappable notes. Standard: one compact list with the mode names.
  */
-export function ModeGuide({ t, onPick }: { t: Strings; onPick?: (question: string) => void }) {
+export function ModeGuide({
+  t,
+  simple,
+  onPick,
+  onMood,
+  className,
+}: {
+  t: Strings;
+  simple: boolean;
+  onPick: (question: string) => void;
+  /** Which kind of question the pointer is on (Sid makes the matching face) */
+  onMood?: (mode: Mode | null) => void;
+  className?: string;
+}) {
+  const hover = (mode: Mode) => ({
+    onPointerEnter: () => onMood?.(mode),
+    onPointerLeave: () => onMood?.(null),
+    onFocus: () => onMood?.(mode),
+    onBlur: () => onMood?.(null),
+  });
+
   return (
-    <section aria-labelledby="people-ask" className="flex flex-col gap-4">
-      <h2 id="people-ask" className="font-hand text-2xl font-bold text-ink sm:text-[1.7rem]">
+    <section aria-labelledby="people-ask" className={cn("flex flex-col gap-3", className)}>
+      <h3 id="people-ask" className="px-1 font-hand text-lg font-bold text-ink-soft">
         {t.peopleAsk}
-      </h2>
-      <ul className="flex flex-col gap-4">
-        {ITEMS.map(({ mode, icon: Icon, tone, tilt }, i) => (
-          <li key={mode} className={cn("transition-transform hover:rotate-0", tilt)}>
-            <button
-              type="button"
-              onClick={() => onPick?.(t.modeExample[mode])}
-              className={cn(
-                "sticker group flex w-full items-start gap-3 bg-surface p-4 text-start active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
-                i % 2 ? "bubble-user" : "bubble",
-              )}
-            >
-              <span className={cn("grid size-11 shrink-0 place-items-center rounded-full border-2 border-edge", tone)} aria-hidden="true">
-                <Icon className="size-5" />
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="text-lg leading-snug font-bold text-ink">&ldquo;{t.modeExample[mode]}&rdquo;</span>
-                <span className="mt-1 text-sm text-ink-soft">
-                  <span className="font-hand font-bold text-ink">{t.modes[mode]}</span>
-                  <span aria-hidden="true">: </span>
-                  {t.modeHint[mode].toLowerCase()}
+      </h3>
+      {simple ? (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {ITEMS.map(({ mode, icon: Icon, tone }) => (
+            <li key={mode}>
+              <button
+                type="button"
+                onClick={() => onPick(t.modeExample[mode])}
+                {...hover(mode)}
+                className="sticker flex h-full w-full flex-col items-start gap-2 rounded-2xl bg-surface p-4 text-start hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 active:shadow-none"
+              >
+                <span className={cn("grid size-10 place-items-center rounded-xl", tone)} aria-hidden="true">
+                  <Icon className="size-5" />
                 </span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
+                <span className="text-lg leading-snug font-bold text-ink">&ldquo;{t.modeExample[mode]}&rdquo;</span>
+                <span className="text-sm text-ink-soft">{t.modeHint[mode]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="divide-y divide-line rounded-2xl bg-surface ring-1 ring-line">
+          {ITEMS.map(({ mode, icon: Icon, tone }) => (
+            <li key={mode}>
+              <button
+                type="button"
+                onClick={() => onPick(t.modeExample[mode])}
+                {...hover(mode)}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-start first:rounded-t-2xl hover:bg-surface-2"
+              >
+                <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", tone)} aria-hidden="true">
+                  <Icon className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1 text-ink">{t.modeExample[mode]}</span>
+                <span className="hidden shrink-0 text-sm text-ink-soft sm:inline">{t.modes[mode]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

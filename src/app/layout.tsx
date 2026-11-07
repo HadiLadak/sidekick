@@ -32,7 +32,7 @@ export const viewport: Viewport = {
 };
 
 // Applies saved theme, language and Simple mode before paint so nothing flashes.
-const boot = `(function(){try{var d=document.documentElement;var s=JSON.parse(localStorage.getItem('sid:prefs')||'{}');var dark=s.theme?s.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;d.classList.toggle('dark',dark);if(s.simple)d.dataset.simple='true';if(s.lang){d.lang=s.lang;d.dir=(s.lang==='ur'||s.lang==='ar')?'rtl':'ltr';}}catch(e){}})();`;
+const boot = `(function(){try{var d=document.documentElement;var s=JSON.parse(localStorage.getItem('sid:prefs')||'{}');var dark=s.theme?s.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;d.classList.toggle('dark',dark);d.dataset.simple=String(s.simple!==false);if(s.lang){d.lang=s.lang;d.dir=(s.lang==='ur'||s.lang==='ar')?'rtl':'ltr';}}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

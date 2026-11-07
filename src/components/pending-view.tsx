@@ -67,7 +67,7 @@ export function PendingView({
             </p>
           )}
           {image && (
-            <div className="relative overflow-hidden rounded-[1.25rem] border-4 border-ink">
+            <div className="relative overflow-hidden rounded-2xl border-4 border-ink">
               {/* eslint-disable-next-line @next/next/no-img-element -- local preview of the user's own screenshot */}
               <img src={image.url} alt="" width={image.width} height={image.height} className="block h-auto max-h-[38vh] w-auto opacity-85" />
               <span

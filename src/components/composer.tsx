@@ -18,6 +18,7 @@ export function Composer({
   simple,
   onNotice,
   followUp = false,
+  hideThumb = false,
 }: {
   t: Strings;
   speechLang: string;
@@ -29,6 +30,8 @@ export function Composer({
   simple: boolean;
   onNotice: (msg: string) => void;
   followUp?: boolean;
+  /** Wide screens show the screenshot big above the box, so skip the small copy */
+  hideThumb?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -119,7 +122,7 @@ export function Composer({
   return (
     <form
       className={cn(
-        "bubble-user relative bg-surface p-3 shadow-[0_0.375rem_0_0_var(--surface-2)] ring-1 ring-line transition-shadow focus-within:ring-2 focus-within:ring-sky sm:p-4",
+        "bubble-user relative bg-surface p-3 ring-2 ring-ink/70 transition-shadow focus-within:ring-sky sm:p-4",
         dragging && "ring-4 ring-sky",
       )}
       onSubmit={(e) => {
@@ -158,7 +161,7 @@ export function Composer({
             alt=""
             width={image.width}
             height={image.height}
-            className="h-20 w-auto max-w-[7rem] rounded-lg border-2 border-ink object-cover object-top"
+            className={cn("h-20 w-auto max-w-[7rem] rounded-lg border-2 border-ink object-cover object-top", hideThumb && "lg:hidden")}
           />
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
             <button
@@ -178,7 +181,7 @@ export function Composer({
             <X className="size-5" aria-hidden="true" />
           </button>
         </div>
-      ) : !followUp ? (
+      ) : !followUp && simple ? (
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
@@ -212,7 +215,18 @@ export function Composer({
         className="block w-full resize-y rounded-xl border-2 border-line bg-paper px-3 py-3 text-lg leading-relaxed text-ink outline-none focus:border-sky placeholder:text-ink-soft/80"
       />
 
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {/* Standard mode: the screenshot button sits with the others instead of a big drop area */}
+        {!simple && !followUp && !image && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="flex h-12 items-center gap-2 rounded-full bg-surface-2 px-4 font-semibold text-ink ring-1 ring-line hover:ring-sky"
+          >
+            <ImagePlus className="size-5" aria-hidden="true" />
+            {dragging ? t.dropHere : t.addScreenshot}
+          </button>
+        )}
         <button
           type="button"
           onClick={toggleVoice}
@@ -233,7 +247,7 @@ export function Composer({
         <button
           type="submit"
           disabled={!text.trim() && !image}
-          className="ms-auto h-12 rounded-full bg-mark px-6 text-lg font-bold text-on-mark shadow-[0_0.25rem_0_0_var(--ink)] transition-transform active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
+          className="ms-auto h-12 rounded-full bg-mark px-6 text-lg font-bold text-on-mark press transition-transform disabled:cursor-not-allowed disabled:opacity-45"
         >
           {t.send}
         </button>

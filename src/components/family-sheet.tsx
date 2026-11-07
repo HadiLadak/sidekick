@@ -64,7 +64,7 @@ export function FamilySheet({
       aria-labelledby="family-title"
       className="m-auto mb-0 w-full max-w-lg bg-transparent p-0 backdrop:bg-ink/40 sm:mb-auto"
     >
-      <div className="flex max-h-[90dvh] flex-col gap-4 overflow-y-auto rounded-t-[1.75rem] bg-surface p-5 pb-[max(2rem,env(safe-area-inset-bottom))] ring-1 ring-line sm:rounded-[1.75rem] sm:pb-5">
+      <div className="flex max-h-[90dvh] flex-col gap-4 overflow-y-auto rounded-t-3xl bg-surface p-5 pb-[max(2rem,env(safe-area-inset-bottom))] ring-1 ring-line sm:rounded-[1.75rem] sm:pb-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="family-title" className="text-2xl font-bold text-ink">
@@ -108,7 +108,7 @@ export function FamilySheet({
             <button
               type="button"
               onClick={share}
-              className="flex h-12 flex-[1_1_9rem] items-center justify-center gap-2 rounded-full whitespace-nowrap bg-mark px-5 font-bold text-on-mark shadow-[0_0.25rem_0_0_var(--ink)] active:translate-y-1 active:shadow-none"
+              className="flex h-12 flex-[1_1_9rem] items-center justify-center gap-2 rounded-full whitespace-nowrap bg-mark px-5 font-bold text-on-mark press"
             >
               <Share2 className="size-5" aria-hidden="true" />
               {t.share}

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef } from "react";
 import type { Strings } from "@/lib/i18n";
 import { Sid } from "./sid";
 
-const COLORS = ["var(--mark)", "#ff8f7a", "#7cc4ff", "#7fe0b0", "#cfb2ff", "#1b2452"];
+// Confetti from the core palette only
+const COLORS = ["var(--mark)", "var(--sky)", "var(--safe)", "var(--danger)", "var(--ink)", "var(--mark-deep)"];
 
 /**
  * Shown only after the user taps "It's fixed" (or "Got it" on a scam check). Escape or Close just
@@ -79,7 +80,7 @@ export function Celebration({
             type="button"
             autoFocus
             onClick={onStartOver}
-            className="h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark shadow-[0_0.25rem_0_0_var(--ink)] active:translate-y-1 active:shadow-none"
+            className="h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark press"
           >
             {t.startOver}
           </button>

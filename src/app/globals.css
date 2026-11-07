@@ -60,11 +60,16 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
+  /* Three corner sizes, nothing else (plus full pills for buttons):
+     S 0.75rem  inputs, chips, thumbnails, icon tiles   (rounded-lg / rounded-xl)
+     M 1.25rem  cards and Sid's speech bubbles           (rounded-2xl, .bubble)
+     L 1.75rem  big panels: live help, verdicts, sheets (rounded-3xl) */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
 
   --animate-pulse-ring: pulse-ring 1.8s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
   --animate-bob: bob 2.6s ease-in-out infinite;
@@ -90,10 +95,11 @@
   --safe-bg: #e2f5ec;
   --sky: #2c4bd1;
   --sky-bg: #e4e9ff;
-  --fix: #0b6b74;
-  --fix-bg: #dcf3f2;
-  --learn: #6a37b8;
-  --learn-bg: #efe6fc;
+  /* Modes reuse the core palette: no extra hues */
+  --fix: var(--ink);
+  --fix-bg: var(--surface-2);
+  --learn: var(--sky);
+  --learn-bg: var(--sky-bg);
 
   --background: var(--paper);
   --foreground: var(--ink);
@@ -114,7 +120,7 @@
   --input: var(--line);
   --ring: var(--sky);
   --radius: 1rem;
-  --bubble: 1.5rem;
+  --bubble: 1.25rem;
   color-scheme: light;
 }
 
@@ -137,22 +143,33 @@
   --safe-bg: #163a3a;
   --sky: #9db0ff;
   --sky-bg: #222f68;
-  --fix: #7fdcd6;
-  --fix-bg: #173a4a;
-  --learn: #cfb2ff;
-  --learn-bg: #2f2660;
+  --fix: var(--ink);
+  --fix-bg: var(--surface-2);
+  --learn: var(--sky);
+  --learn-bg: var(--sky-bg);
   --primary: var(--mark);
   --primary-foreground: var(--on-mark);
   color-scheme: dark;
 }
 
-/* Simple mode: everything scales up from the root, so rem-based UI grows together. */
+/* Simple mode: bigger type steps and roomier spacing (real tokens, so text stays crisp).
+   The layout also changes in the components: fewer, bigger choices. */
 html[data-simple="true"] {
-  font-size: 125%;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.125rem;
+  --text-4xl: 2.5rem;
+  --spacing: 0.275rem;
 }
-/* Keep the header controls normal-sized in Simple mode so they fit on one row */
+/* The header keeps its size in both modes so the controls fit on one row */
 html[data-simple="true"] .site-header {
-  zoom: 0.8;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-2xl: 1.5rem;
+  --spacing: 0.25rem;
 }
 
 @layer base {
@@ -220,9 +237,16 @@ html[data-simple="true"] .site-header {
       transform 0.12s ease-out,
       box-shadow 0.12s ease-out;
   }
-  /* Hand-cut corners: every corner a slightly different radius */
-  .hand-cut {
-    border-radius: 1.6rem 1.1rem 1.8rem 0.5rem / 1.2rem 1.7rem 1rem 1.4rem;
+  /* Shadows: only two, both hard-edged. .sticker = tappable card, .press = primary button */
+  .press {
+    box-shadow: 0 0.25rem 0 0 var(--edge);
+  }
+  .press:active:not(:disabled) {
+    transform: translateY(0.25rem);
+    box-shadow: none;
+  }
+  .press:disabled {
+    box-shadow: none;
   }
   /* Highlighter swipe behind text */
   .marked {

@@ -31,7 +31,7 @@ import { Sid, type Mood } from "./sid";
 import { TapSpot } from "./tap-spot";
 
 const MODE_STYLE: Record<Mode, { icon: typeof Pointer; chip: string }> = {
-  show_me: { icon: Pointer, chip: "bg-sky-bg text-sky" },
+  show_me: { icon: Pointer, chip: "bg-mark/35 text-ink" },
   fix_it: { icon: Wrench, chip: "bg-fix-bg text-fix" },
   scam_check: { icon: ShieldAlert, chip: "bg-danger-bg text-danger" },
   explain_it: { icon: BookOpenText, chip: "bg-learn-bg text-learn" },
@@ -211,10 +211,10 @@ export function ResultView({
 
       {/* The big instruction for the current step */}
       {showSteps && current && (
-        <section lang={r.language} dir={dir} aria-labelledby="sid-step" className="flex flex-col gap-3 rounded-[1.6rem_1.1rem_1.8rem_0.6rem] border-2 border-mark bg-mark/15 p-4 sm:p-5">
+        <section lang={r.language} dir={dir} aria-labelledby="sid-step" className="flex flex-col gap-3 rounded-2xl border-2 border-mark bg-mark/15 p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <p className="font-hand text-lg font-bold text-ink-soft" aria-live="polite">
-              {r.mode === "fix_it" && <span className="me-2">{t.howToFix} ·</span>}
+              {r.mode === "fix_it" && <span className="me-2">{t.howToFix}:</span>}
               {t.step(step + 1, r.steps.length)}
             </p>
             <div className="flex flex-1 gap-1" aria-hidden="true">
@@ -281,6 +281,41 @@ export function ResultView({
         </div>
       )}
 
+      {/* Standard mode: the whole list at a glance (Simple mode keeps to one step at a time) */}
+      {!simple && r.steps.length > 1 && (
+        <section lang={r.language} dir={dir} className="rounded-2xl bg-surface p-2 ring-1 ring-line" aria-labelledby="all-steps">
+          <h2 id="all-steps" className="px-3 pt-2 pb-1 font-hand text-base font-bold text-ink-soft">
+            {t.allSteps}
+          </h2>
+          <ol className="flex flex-col">
+            {r.steps.map((s, i) => (
+              <li key={i}>
+                <button
+                  type="button"
+                  onClick={() => setStep(i)}
+                  aria-current={i === step ? "step" : undefined}
+                  className={cn(
+                    "flex w-full items-start gap-3 rounded-xl px-3 py-2 text-start text-ink",
+                    i === step ? "bg-mark/30 font-bold" : "hover:bg-surface-2",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid size-6 shrink-0 place-items-center rounded-full text-sm font-bold",
+                      i < step ? "bg-ink text-paper" : "ring-1 ring-ink",
+                    )}
+                    aria-hidden="true"
+                  >
+                    {i + 1}
+                  </span>
+                  <span>{s.instruction}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {/* Actions */}
       <div className="flex flex-col gap-3 pt-1">
         {reply}
@@ -310,7 +345,7 @@ export function ResultView({
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              className="flex h-14 items-center justify-center gap-2 rounded-full bg-mark px-6 text-lg font-bold text-on-mark shadow-[0_0.25rem_0_0_var(--ink)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-50"
+              className="flex h-14 items-center justify-center gap-2 rounded-full bg-mark px-6 text-lg font-bold text-on-mark press transition-transform disabled:opacity-50"
             >
               <Camera className="size-5" aria-hidden="true" />
               {t.nextStep}
@@ -388,7 +423,7 @@ function Verdict({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "l
   const calm = isCalm(r);
   return (
     <section className="flex flex-col gap-4" lang={r.language} dir={dir}>
-      <div className={cn("pop-in hand-cut flex -rotate-[0.6deg] items-center gap-4 p-5 ring-2", V.box)}>
+      <div className={cn("pop-in flex items-center gap-4 rounded-3xl p-5 ring-2", V.box)}>
         <V.icon className="size-12 shrink-0" strokeWidth={2.2} aria-hidden="true" />
         <p className="text-3xl leading-tight font-bold">{t.verdict[v]}</p>
       </div>

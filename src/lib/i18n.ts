@@ -39,6 +39,7 @@ const en = {
     explain_it: "Any tech question",
   },
   gotScreenshot: "Got your screenshot. Now tell me in a few words what you were trying to do.",
+  allSteps: "All the steps",
   peopleAsk: "Things people ask me",
   modeExample: {
     show_me: "How do I video call my grandson?",
@@ -130,6 +131,7 @@ const fr: Strings = {
     explain_it: "Toute question techno",
   },
   gotScreenshot: "J'ai votre capture. Dites-moi en quelques mots ce que vous essayiez de faire.",
+  allSteps: "Toutes les étapes",
   peopleAsk: "Ce qu'on me demande",
   modeExample: {
     show_me: 'Comment faire un appel vidéo à mon petit-fils?',
@@ -219,6 +221,7 @@ const es: Strings = {
     explain_it: "Cualquier duda técnica",
   },
   gotScreenshot: "Tengo tu captura. Cuéntame en pocas palabras qué intentabas hacer.",
+  allSteps: "Todos los pasos",
   peopleAsk: "Lo que me preguntan",
   modeExample: {
     show_me: "¿Cómo hago una videollamada a mi nieto?",
@@ -308,6 +311,7 @@ const ur: Strings = {
     explain_it: "ٹیکنالوجی کا کوئی بھی سوال",
   },
   gotScreenshot: "آپ کا اسکرین شاٹ مل گیا۔ اب چند الفاظ میں بتائیں کہ آپ کیا کرنا چاہ رہے تھے۔",
+  allSteps: "تمام مراحل",
   peopleAsk: "لوگ مجھ سے یہ پوچھتے ہیں",
   modeExample: {
     show_me: "میں اپنے پوتے کو ویڈیو کال کیسے کروں؟",
@@ -397,6 +401,7 @@ const ar: Strings = {
     explain_it: "أي سؤال تقني",
   },
   gotScreenshot: "وصلتني لقطة الشاشة. أخبرني بكلمات قليلة ماذا كنت تحاول أن تفعل.",
+  allSteps: "كل الخطوات",
   peopleAsk: "أشياء يسألونني عنها",
   modeExample: {
     show_me: "كيف أجري مكالمة فيديو مع حفيدي؟",
