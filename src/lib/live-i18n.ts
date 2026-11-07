@@ -3,6 +3,7 @@ import type { Lang } from "./i18n";
 const en = {
   cta: "Get help live",
   ctaSub: "Talk to Sid while he watches your screen",
+  ctaButton: "Start live help",
   orScreenshot: "Or send Sid a screenshot",
   preTitle: "Sid will look and listen, like a helper next to you.",
   preBody: "Just talk. Sid answers out loud, one step at a time. You can interrupt anytime.",
@@ -42,6 +43,7 @@ export type LiveCopy = typeof en;
 
 const fr: LiveCopy = {
   ...en,
+  ctaButton: "Démarrer l'aide en direct",
   cta: "Aide en direct",
   ctaSub: "Parlez à Sid pendant qu'il regarde votre écran",
   orScreenshot: "Ou envoyez une capture à Sid",
@@ -81,6 +83,7 @@ const fr: LiveCopy = {
 
 const es: LiveCopy = {
   ...en,
+  ctaButton: "Empezar ayuda en vivo",
   cta: "Ayuda en vivo",
   ctaSub: "Habla con Sid mientras mira tu pantalla",
   orScreenshot: "O envía una captura a Sid",
@@ -120,6 +123,7 @@ const es: LiveCopy = {
 
 const ur: LiveCopy = {
   ...en,
+  ctaButton: "لائیو مدد شروع کریں",
   cta: "لائیو مدد لیں",
   ctaSub: "سِڈ آپ کی اسکرین دیکھتے ہوئے آپ سے بات کرے گا",
   orScreenshot: "یا سِڈ کو اسکرین شاٹ بھیجیں",
@@ -159,6 +163,7 @@ const ur: LiveCopy = {
 
 const ar: LiveCopy = {
   ...en,
+  ctaButton: "ابدأ المساعدة المباشرة",
   cta: "مساعدة مباشرة",
   ctaSub: "تحدّث مع سِد وهو يرى شاشتك",
   orScreenshot: "أو أرسل لقطة شاشة إلى سِد",

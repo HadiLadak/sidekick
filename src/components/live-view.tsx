@@ -249,7 +249,11 @@ export function LiveView({
     if (!api) return;
     try {
       const w = await api.requestWindow({ width: 400, height: 660 });
-      // Bring our styles, fonts, theme and language into the floating window
+      // Bring our styles, fonts, theme and language into the floating window.
+      // <base> makes relative font URLs resolve against our origin.
+      const base = w.document.createElement("base");
+      base.href = location.origin + "/";
+      w.document.head.appendChild(base);
       for (const sheet of Array.from(document.styleSheets)) {
         try {
           const style = w.document.createElement("style");

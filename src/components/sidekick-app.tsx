@@ -207,7 +207,7 @@ export function SidekickApp() {
                   onClick={() => setStatus("live-pre")}
                   className="mt-4 h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark shadow-[0_0.25rem_0_0_#0b1030] active:translate-y-1 active:shadow-none"
                 >
-                  {lc.cta}
+                  {lc.ctaButton}
                 </button>
               </section>
             )}

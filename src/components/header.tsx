@@ -19,7 +19,7 @@ export function Header({
   onHome: () => void;
 }) {
   return (
-    <header className="mx-auto flex w-full max-w-3xl items-center gap-1.5 px-3 pt-4 pb-2 sm:px-6">
+    <header className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-1.5 px-3 pt-4 pb-2 sm:px-6">
       <button
         type="button"
         onClick={onHome}
@@ -30,7 +30,7 @@ export function Header({
         <span aria-hidden="true" className="hidden min-[440px]:inline">Sid</span>
       </button>
 
-      <div className="ms-auto flex items-center gap-1.5 sm:gap-2">
+      <div className="ms-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
         <label className="relative flex h-11 items-center rounded-full bg-surface ps-2.5 pe-1 ring-1 ring-line focus-within:ring-2 focus-within:ring-sky">
           <Globe className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
           <span className="sr-only">{t.language}</span>

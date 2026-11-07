@@ -167,15 +167,19 @@ html[data-simple="true"] {
     outline: 3px solid var(--sky);
     outline-offset: 3px;
   }
-  /* Urdu reads best in Nastaliq with generous leading */
-  :lang(ur) {
-    font-family: var(--font-nastaliq), var(--font-atkinson), serif;
-    line-height: 2.1;
-  }
-  :lang(ar) {
-    font-family: var(--font-naskh), var(--font-atkinson), serif;
-    line-height: 1.8;
-  }
+}
+
+/*
+  Urdu reads best in Nastaliq, which needs very generous leading or its tall
+  letters collide. Unlayered on purpose so it wins over Tailwind's leading-* utilities.
+*/
+:lang(ur) {
+  font-family: var(--font-nastaliq), var(--font-atkinson), serif;
+  line-height: 2.15;
+}
+:lang(ar) {
+  font-family: var(--font-naskh), var(--font-atkinson), serif;
+  line-height: 1.75;
 }
 
 @layer components {
