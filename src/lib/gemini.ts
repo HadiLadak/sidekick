@@ -3,7 +3,7 @@ import type { SidRequest, SidResult } from "./types";
 
 export const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 /** Newest fast Flash first; fall back when a model is overloaded or unavailable. */
-const MODELS = [MODEL, "gemini-3.7-flash", "gemini-3.5-flash"].filter((m, i, a) => a.indexOf(m) === i);
+const MODELS = [MODEL, "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"].filter((m, i, a) => a.indexOf(m) === i);
 
 function retriable(err: unknown) {
   const msg = String((err as { message?: string })?.message ?? err);
@@ -146,7 +146,7 @@ export async function askSid(ai: GoogleGenAI, req: SidRequest): Promise<SidResul
     // then split what's left between the fallbacks.
     const left = 55_000 - (Date.now() - started);
     if (left < 4_000) break;
-    const budget = i === 0 ? Math.min(22_000, left) : i === MODELS.length - 1 ? left : Math.min(18_000, left);
+    const budget = i === 0 ? Math.min(20_000, left) : i === MODELS.length - 1 ? left : Math.min(14_000, left);
     try {
       const res = await ai.models.generateContent({
         model,

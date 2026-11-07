@@ -146,6 +146,15 @@ export function SidekickApp() {
     setText(demo.prompt);
     setImage(img);
     setProblem(demo.prompt);
+    if (demo.cached) {
+      // Examples use a saved real answer from Sid: instant, and it spares the API quota.
+      const req = { text: demo.prompt, image: img, history: [], demo };
+      setLastRequest(req);
+      setShownImage(img);
+      showResult(demo.cached, req);
+      window.scrollTo({ top: 0 });
+      return;
+    }
     ask({ text: demo.prompt, image: img, history: [], demo });
   }
 
@@ -399,7 +408,7 @@ function Thinking({ t, image }: { t: { thinking: string }; image: PreparedImage 
       {image && (
         <div className="relative overflow-hidden rounded-[1.25rem] border-4 border-ink">
           {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
-          <img src={image.url} alt="" className="block max-h-[55vh] w-auto opacity-80" />
+          <img src={image.url} alt="" width={image.width} height={image.height} className="block h-auto max-h-[55vh] w-auto opacity-80" />
           <span
             className="absolute inset-x-0 h-1/4 bg-gradient-to-b from-transparent via-mark/50 to-transparent motion-safe:animate-[scan_1.6s_ease-in-out_infinite_alternate]"
             aria-hidden="true"

@@ -154,6 +154,18 @@ html[data-simple="true"] {
   html {
     @apply font-sans;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  dialog {
+    overscroll-behavior: contain;
+  }
+  select option {
+    background-color: var(--surface);
+    color: var(--ink);
+  }
+  /* The yellow "act here" buttons get a deeper yellow on hover */
+  .bg-mark:hover:not(:disabled) {
+    background-color: var(--mark-deep);
   }
   body {
     @apply bg-background text-foreground;

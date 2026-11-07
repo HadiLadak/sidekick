@@ -102,7 +102,7 @@ export function Composer({
   return (
     <form
       className={cn(
-        "bubble-user relative bg-surface p-3 shadow-[0_0.375rem_0_0_var(--surface-2)] ring-1 ring-line transition-shadow sm:p-4",
+        "bubble-user relative bg-surface p-3 shadow-[0_0.375rem_0_0_var(--surface-2)] ring-1 ring-line transition-shadow focus-within:ring-2 focus-within:ring-sky sm:p-4",
         dragging && "ring-4 ring-sky",
       )}
       onSubmit={(e) => {
@@ -139,6 +139,8 @@ export function Composer({
           <img
             src={image.url}
             alt=""
+            width={image.width}
+            height={image.height}
             className="h-20 w-auto max-w-[7rem] rounded-lg border-2 border-ink object-cover object-top"
           />
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
@@ -181,6 +183,7 @@ export function Composer({
       <textarea
         id="sid-question"
         name="question"
+        autoComplete="off"
         dir="auto"
         value={text}
         onChange={(e) => setText(e.target.value)}

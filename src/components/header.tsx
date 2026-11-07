@@ -27,7 +27,7 @@ export function Header({
         aria-label="Sid, home"
       >
         <Sid className="size-10" animate={false} />
-        <span aria-hidden="true" className="hidden min-[440px]:inline">Sid</span>
+        <span aria-hidden="true" translate="no" className="hidden min-[440px]:inline">Sid</span>
       </button>
 
       <div className="ms-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
