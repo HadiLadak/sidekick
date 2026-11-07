@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { apiKeys, clientFor, isQuotaError, markQuotaExceeded } from "@/lib/keys";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 20;
@@ -19,16 +20,15 @@ export async function POST(request: Request) {
   recent.push(now);
   hits.set(ip, recent);
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return NextResponse.json({ scam: false });
+  const keys = apiKeys();
+  if (!keys.length) return NextResponse.json({ scam: false });
   const body = await request.json().catch(() => null);
   const data = typeof body?.data === "string" ? body.data : "";
   if (!data || data.length > 2_500_000) return NextResponse.json({ scam: false });
 
-  const ai = new GoogleGenAI({ apiKey });
-  for (const model of WATCH_MODELS) {
+  for (const model of WATCH_MODELS) for (const { key, index } of keys) {
     try {
-      const res = await ai.models.generateContent({
+      const res = await clientFor(key).models.generateContent({
         model,
         contents: [
           {
@@ -58,7 +58,8 @@ export async function POST(request: Request) {
       });
       return NextResponse.json(JSON.parse(res.text ?? "{}"));
     } catch (err) {
-      console.warn(`[watch] ${model} failed`, String(err).slice(0, 160));
+      console.warn(`[watch] ${model} (key ${index + 1}) failed`, String(err).slice(0, 160));
+      if (isQuotaError(err)) markQuotaExceeded(index);
     }
   }
   return NextResponse.json({ scam: false });

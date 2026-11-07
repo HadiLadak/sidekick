@@ -1,13 +1,18 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { apiKeys, clientFor, isMissingModel, isOverloadError, isQuotaError, isTimeoutError, markQuotaExceeded } from "./keys";
 import type { SidRequest, SidResult } from "./types";
 
 export const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 /** Newest fast Flash first; fall back when a model is overloaded or unavailable. */
 const MODELS = [MODEL, "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"].filter((m, i, a) => a.indexOf(m) === i);
 
-function retriable(err: unknown) {
-  const msg = String((err as { message?: string })?.message ?? err);
-  return /(503|429|500|404)|UNAVAILABLE|RESOURCE_EXHAUSTED|overloaded|high demand|not found|abort|timeout/i.test(msg);
+export class SidFailure extends Error {
+  constructor(
+    public kind: "quota" | "timeout" | "overloaded" | "failed",
+    cause: unknown,
+  ) {
+    super(String((cause as { message?: string })?.message ?? cause));
+  }
 }
 
 const stringArray = { type: Type.ARRAY, items: { type: Type.STRING } };
@@ -112,13 +117,9 @@ Safety: never ask for passwords, PINs, codes or card numbers. If the screenshot 
 
 Follow-ups: if history is provided, the user did the previous step and sent a new screenshot. Continue from where they are now. If the screenshot shows the goal is reached, set done = true and celebrate briefly in summary. Always set next_hint when a new screenshot after the step would help.`;
 
-export function getClient() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  return new GoogleGenAI({ apiKey });
-}
+export const hasKey = () => apiKeys().length > 0;
 
-export async function askSid(ai: GoogleGenAI, req: SidRequest): Promise<SidResult> {
+export async function askSid(req: SidRequest): Promise<SidResult> {
   const parts: Array<Record<string, unknown>> = [];
   if (req.image) parts.push({ inlineData: { data: req.image.data, mimeType: req.image.mimeType } });
 
@@ -140,35 +141,50 @@ export async function askSid(ai: GoogleGenAI, req: SidRequest): Promise<SidResul
   });
 
   let lastErr: unknown;
+  let sawQuota = false;
+  let sawTimeout = false;
   const started = Date.now();
-  for (const [i, model] of MODELS.entries()) {
-    // Keep the whole request under Vercel's 60s limit: give the newest model ~22s,
-    // then split what's left between the fallbacks.
-    const left = 55_000 - (Date.now() - started);
-    if (left < 4_000) break;
-    const budget = i === 0 ? Math.min(20_000, left) : i === MODELS.length - 1 ? left : Math.min(14_000, left);
-    try {
-      const res = await ai.models.generateContent({
-        model,
-        contents: [{ role: "user", parts }],
-        config: {
-          systemInstruction: SYSTEM,
-          responseMimeType: "application/json",
-          responseSchema,
-          temperature: 0.3,
-          abortSignal: AbortSignal.timeout(budget),
-        },
-      });
-      const text = res.text;
-      if (!text) throw new Error("Empty response");
-      return { ...normalize(JSON.parse(text)), model } as SidResult;
-    } catch (err) {
-      lastErr = err;
-      console.warn(`[sid] ${model} failed:`, String(err).slice(0, 200));
-      if (!retriable(err) && !(err instanceof SyntaxError)) break;
+  const keys = apiKeys();
+  models: for (const [i, model] of MODELS.entries()) {
+    for (const { index, key } of keys) {
+      // Keep the whole request under Vercel's 60s limit
+      const left = 55_000 - (Date.now() - started);
+      if (left < 4_000) break models;
+      const budget = i === 0 ? Math.min(20_000, left) : i === MODELS.length - 1 ? left : Math.min(14_000, left);
+      try {
+        const res = await clientFor(key).models.generateContent({
+          model,
+          contents: [{ role: "user", parts }],
+          config: {
+            systemInstruction: SYSTEM,
+            responseMimeType: "application/json",
+            responseSchema,
+            temperature: 0.3,
+            abortSignal: AbortSignal.timeout(budget),
+          },
+        });
+        const text = res.text;
+        if (!text) throw new Error("Empty response");
+        return { ...normalize(JSON.parse(text)), model } as SidResult;
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[sid] ${model} (key ${index + 1}) failed:`, String(err).slice(0, 160));
+        if (isQuotaError(err)) {
+          // This key is out of quota: try the other key with the same model
+          sawQuota = true;
+          markQuotaExceeded(index);
+          continue;
+        }
+        if (isTimeoutError(err)) sawTimeout = true;
+        if (isOverloadError(err) || isTimeoutError(err) || isMissingModel(err) || err instanceof SyntaxError) {
+          continue models; // same problem for every key: move on to the next model
+        }
+        break models;
+      }
     }
   }
-  throw lastErr;
+  const kind = sawQuota ? "quota" : sawTimeout ? "timeout" : isOverloadError(lastErr) ? "overloaded" : "failed";
+  throw new SidFailure(kind, lastErr);
 }
 
 /** Defensive clean-up so the UI never crashes on a slightly-off response. */

@@ -38,6 +38,8 @@ export interface SidResult {
   next_hint: string;
   /** Which Gemini model answered (for debugging). */
   model?: string;
+  /** Server time spent, in milliseconds */
+  ms?: number;
 }
 
 /** A compact record of earlier turns, sent back so Sid can continue a flow. */
@@ -56,6 +58,8 @@ export interface SidRequest {
 }
 
 export interface SidError {
-  error: "no_key" | "bad_input" | "too_large" | "rate_limited" | "model_failed";
+  error: "no_key" | "bad_input" | "too_large" | "rate_limited" | "model_failed" | "quota" | "timeout" | "busy" | "network" | "unsupported";
   message: string;
+  /** Server time spent, in milliseconds */
+  ms?: number;
 }

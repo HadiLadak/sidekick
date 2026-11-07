@@ -268,7 +268,7 @@ export class LiveSid {
     }).catch(async (err) => {
       this.session?.close();
       this.session = null;
-      if (body.hasFallback && !this.stopped) return this.connect(attempt + 1);
+      if (body.hasFallback && !this.stopped) return this.connect((body.attempt ?? attempt) + 1);
       throw err;
     });
   }
