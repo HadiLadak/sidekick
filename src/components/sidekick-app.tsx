@@ -78,6 +78,8 @@ export function SidekickApp() {
 
   function showResult(r: SidResult, req: { text: string; history: Turn[] }) {
     setResult(r);
+    setText("");
+    setImage(null);
     setStatus("result");
     setHistory([
       ...req.history,
@@ -168,14 +170,19 @@ export function SidekickApp() {
   function submit(override?: { text?: string }) {
     const q = override?.text ?? text;
     if (!q.trim() && !image) return;
-    setProblem(q);
-    ask({ text: q, image, history: [] });
+    if (status !== "result") setProblem(q);
+    ask({ text: q, image, history: status === "result" ? history : [] });
   }
 
   async function nextScreenshot(file: File) {
     try {
       const img = await prepareImage(file);
-      ask({ text: "", image: img, history });
+      setImage(img);
+      requestAnimationFrame(() => {
+        const question = document.getElementById("sid-question");
+        question?.scrollIntoView({ behavior: "smooth", block: "center" });
+        question?.focus({ preventScroll: true });
+      });
     } catch {
       setNotice(t.errors.unsupported);
     }
@@ -408,6 +415,19 @@ export function SidekickApp() {
           </section>
         )}
 
+        {status === "result" && (
+          <Composer
+            t={t}
+            speechLang={langMeta.speech}
+            text={text}
+            setText={setText}
+            image={image}
+            setImage={setImage}
+            onSubmit={submit}
+            simple={prefs.simple}
+            onNotice={setNotice}
+          />
+        )}
         {status === "result" && result && (
           <ResultView
             result={result}

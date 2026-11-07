@@ -183,7 +183,7 @@ export function Composer({
         </button>
       )}
 
-      <label htmlFor="sid-question" className="sr-only">
+      <label htmlFor="sid-question" className="mb-2 block px-2 text-lg font-bold text-ink">
         {t.ask}
       </label>
       <textarea
@@ -198,7 +198,7 @@ export function Composer({
         }}
         placeholder={t.placeholder}
         rows={simple ? 2 : 3}
-        className="block w-full resize-none rounded-xl bg-transparent px-2 py-1 text-lg leading-relaxed text-ink outline-none placeholder:text-ink-soft/80"
+        className="block w-full resize-y rounded-xl border-2 border-line bg-paper px-3 py-3 text-lg leading-relaxed text-ink outline-none focus:border-sky placeholder:text-ink-soft/80"
       />
 
       <div className="mt-2 flex items-center gap-2">

@@ -115,11 +115,11 @@ export function PendingView({
         )}
         <ol className="flex flex-col gap-3">
           {steps.map((s, i) => (
-            <li key={i} className="flex items-center gap-3 text-lg font-semibold text-ink">
+            <li key={i} className="flex items-center gap-3 rounded-xl border border-mark bg-mark/15 p-3 text-lg font-semibold text-ink">
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-mark text-on-mark ring-1 ring-ink" aria-hidden="true">
                 {i + 1}
               </span>
-              {s.instruction}
+              <mark className="rounded bg-mark px-1 text-on-mark [box-decoration-break:clone]">{s.instruction}</mark>
             </li>
           ))}
           {Array.from({ length: Math.max(0, 3 - steps.length) }, (_, i) => (

@@ -208,7 +208,7 @@ export function ResultView({
 
       {/* The big instruction for the current step */}
       {showSteps && current && (
-        <section lang={r.language} dir={dir} aria-labelledby="sid-step" className="flex flex-col gap-3">
+        <section lang={r.language} dir={dir} aria-labelledby="sid-step" className="flex flex-col gap-3 rounded-2xl border-2 border-mark bg-mark/15 p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <p className="font-hand text-lg font-bold text-ink-soft" aria-live="polite">
               {r.mode === "fix_it" && <span className="me-2">{t.howToFix} ·</span>}
@@ -233,7 +233,7 @@ export function ResultView({
               simple ? "text-4xl sm:text-5xl" : "text-3xl sm:text-4xl",
             )}
           >
-            <span className="marked">{current.instruction}</span>
+            <mark className="rounded-lg bg-mark px-1 text-on-mark [box-decoration-break:clone]">{current.instruction}</mark>
           </h2>
           {current.detail && <p className="text-lg text-ink-soft text-pretty">{current.detail}</p>}
         </section>
