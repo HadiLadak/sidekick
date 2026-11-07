@@ -1,7 +1,7 @@
 "use client";
 
 import { Radio, RotateCcw, ShieldCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type Demo } from "@/lib/demos";
 import { LIVE_STRINGS } from "@/lib/live-i18n";
 import { liveSupported, type Frame, type LiveSource } from "@/lib/live-session";
@@ -42,6 +42,9 @@ export function SidekickApp() {
   const [liveSource, setLiveSource] = useState<LiveSource>("screen");
   const [canLive, setCanLive] = useState(false);
   const lc = LIVE_STRINGS[prefs.lang];
+  const wide = useWide();
+  // Home, waiting, answer and error share the two-column layout; live help gets the whole page
+  const split = status !== "live" && status !== "live-pre";
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- browser capability check after mount
@@ -111,6 +114,8 @@ export function SidekickApp() {
       if (ctrl.signal.aborted) return;
       // Demos still work without a connection: fall back to the saved answer.
       if (req.demo?.cached) return showResult(req.demo.cached, req);
+      // Give their words back so they can fix or resend them
+      if (!req.fromLive) setText((cur) => cur || req.text);
       setError(err);
       setStatus("error");
     };
@@ -172,6 +177,9 @@ export function SidekickApp() {
     if (!q.trim() && !image) return;
     if (status !== "result") setProblem(q);
     ask({ text: q, image, history: status === "result" ? history : [] });
+    // The question moves to the answer side; leave the box ready for the next one
+    setText("");
+    setImage(null);
   }
 
   async function nextScreenshot(file: File) {
@@ -186,6 +194,17 @@ export function SidekickApp() {
     } catch {
       setNotice(t.errors.unsupported);
     }
+  }
+
+  // A question from "Things people ask me": fill the box, don't send
+  function pickExample(q: string) {
+    setText(q);
+    requestAnimationFrame(() => {
+      const box = document.getElementById("sid-question") as HTMLTextAreaElement | null;
+      box?.scrollIntoView({ behavior: "smooth", block: "center" });
+      box?.focus({ preventScroll: true });
+      box?.setSelectionRange(q.length, q.length);
+    });
   }
 
   function startOver() {
@@ -210,90 +229,170 @@ export function SidekickApp() {
       >
         Skip to content
       </a>
-      <Header prefs={prefs} update={update} isDark={isDark} t={t} onHome={startOver} wide={status === "live"} />
+      <Header prefs={prefs} update={update} isDark={isDark} t={t} onHome={startOver} wide={status === "live"} split={split} />
 
       <main
         id="main"
         ref={mainRef}
         className={cn(
           "mx-auto flex w-full flex-1 flex-col gap-6 px-4 pt-4 pb-16 sm:px-6",
-          status === "live" ? "max-w-6xl" : "max-w-3xl",
+          status === "live" ? "max-w-6xl" : split ? "max-w-3xl lg:max-w-6xl" : "max-w-3xl",
         )}
       >
-        {status === "idle" && (
-          <>
-            <section className="flex items-end gap-3 sm:gap-4" aria-labelledby="hello">
-              <Sid mood="helping" className="size-20 sm:size-28" label="Sid" />
-              <div className="bubble flex-1 bg-surface p-4 text-ink ring-1 ring-line sm:p-5">
-                <p id="hello" className="font-hand text-xl font-bold text-ink-soft sm:text-2xl">
-                  {t.hello}
-                </p>
-                <h1 className="mt-1 text-2xl leading-tight font-bold text-balance sm:text-3xl">{t.ask}</h1>
-              </div>
-            </section>
-
-            {canLive && (
-              <section
-                aria-labelledby="live-cta"
-                className="relative overflow-hidden rounded-[1.75rem] bg-ink p-5 text-paper ring-1 ring-ink dark:bg-surface dark:text-ink dark:ring-line"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="min-w-0 flex-1">
-                    <span className="relative mb-3 grid size-12 place-items-center rounded-2xl bg-mark text-on-mark">
-                      <Radio className="size-6" aria-hidden="true" />
-                      <span className="absolute -top-1 -end-1 size-3.5 rounded-full bg-danger ring-2 ring-ink motion-safe:animate-pulse dark:ring-surface" aria-hidden="true" />
-                    </span>
-                    <h2 id="live-cta" className="text-2xl leading-tight font-bold text-balance sm:text-3xl">
-                      {lc.cta}
-                    </h2>
-                    <p className="mt-1 opacity-85 text-pretty">{lc.ctaSub}</p>
-                  </div>
-                  {/* A taste of what Sid does: the ring on the exact button */}
-                  <div className="h-40 w-28 shrink-0 -rotate-3 overflow-hidden rounded-[1.1rem] sm:h-48 sm:w-36" aria-hidden="true">
-                    <TapSpot
-                      src="/demos/video-call.jpg"
-                      width={780}
-                      height={1688}
-                      box={[66, 622, 111, 706]}
-                      hereText={{ tap: t.tapHere, click: t.clickHere }}
-                      alt=""
-                      className="w-full border-[3px] border-mark shadow-none [&_.tap-media]:max-h-none [&_.tap-media]:w-full"
-                    />
-                  </div>
+        {split && (
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
+            {/* LEFT: say hello, go live, or type / add a screenshot. Stays usable on wide screens. */}
+            <div className={cn("flex min-w-0 flex-col gap-6", status !== "idle" && "hidden lg:flex")}>
+              <section className="flex items-end gap-2 sm:gap-3" aria-labelledby="hello">
+                <Sid mood="helping" className="-mb-1 size-20 sm:size-28" label="Sid" track />
+                <div className="bubble flex-1 bg-surface px-4 pt-3 pb-4 text-ink ring-1 ring-line sm:px-5">
+                  <p id="hello" className="font-hand text-xl font-bold text-ink-soft sm:text-2xl">
+                    {t.hello}
+                  </p>
+                  <h1 className="mt-1 text-[1.6rem] leading-[1.15] font-bold text-balance sm:text-[2rem]">{t.ask}</h1>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setStatus("live-pre")}
-                  className="mt-4 h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark shadow-[0_0.25rem_0_0_#0b1030] active:translate-y-1 active:shadow-none"
-                >
-                  {lc.ctaButton}
-                </button>
               </section>
-            )}
-            {canLive && <h2 className="-mb-3 font-hand text-xl font-bold text-ink">{lc.orScreenshot}</h2>}
 
-            <Composer
-              t={t}
-              speechLang={langMeta.speech}
-              text={text}
-              setText={setText}
-              image={image}
-              setImage={setImage}
-              onSubmit={submit}
-              simple={prefs.simple}
-              onNotice={setNotice}
-            />
-            <p className="-mt-3 flex items-center gap-2 px-2 text-sm text-ink-soft">
-              <ShieldCheck className="size-4 shrink-0 text-safe" aria-hidden="true" />
-              {t.neverAsk}
-            </p>
+              {canLive && (
+                <section
+                  aria-labelledby="live-cta"
+                  className="hand-cut relative bg-ink p-5 text-paper shadow-[5px_6px_0_0_var(--mark-deep)] dark:bg-surface dark:text-ink dark:ring-2 dark:ring-line"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="mb-2 flex items-center gap-2 text-mark" aria-hidden="true">
+                        <span className="size-3 rounded-full bg-danger ring-2 ring-paper/80 motion-safe:animate-pulse" aria-hidden="true" />
+                        <Radio className="size-5" aria-hidden="true" />
+                      </p>
+                      <h2 id="live-cta" className="text-[1.65rem] leading-[1.1] font-bold text-balance sm:text-3xl">
+                        {lc.cta}
+                      </h2>
+                      <p className="mt-2 opacity-85 text-pretty">{lc.ctaSub}</p>
+                    </div>
+                    {/* A taste of what Sid does: the ring on the exact button */}
+                    <div className="h-40 w-28 shrink-0 rotate-[4deg] overflow-hidden rounded-[1.1rem] sm:h-44 sm:w-32" aria-hidden="true">
+                      <TapSpot
+                        src="/demos/video-call.jpg"
+                        width={780}
+                        height={1688}
+                        box={[66, 622, 111, 706]}
+                        hereText={{ tap: t.tapHere, click: t.clickHere }}
+                        alt=""
+                        className="w-full border-[3px] border-mark shadow-none [&_.tap-media]:max-h-none [&_.tap-media]:w-full"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStatus("live-pre")}
+                    className="mt-4 h-14 w-full rounded-[1.4rem_0.9rem_1.5rem_1rem] bg-mark text-lg font-bold text-on-mark shadow-[0_0.3rem_0_0_#0b1030] transition-transform hover:-translate-y-0.5 active:translate-y-1 active:shadow-none"
+                  >
+                    {lc.ctaButton}
+                  </button>
+                </section>
+              )}
 
-            <ModeGuide t={t} />
-            <p className="text-center text-sm text-ink-soft">{t.privacyNote}</p>
-          </>
+              <div className="flex flex-col gap-3">
+                {canLive && status !== "result" && <h2 className="ms-1 -rotate-1 font-hand text-xl font-bold text-ink">{lc.orScreenshot}</h2>}
+                <Composer
+                  t={status === "result" ? { ...t, ask: t.followUp } : t}
+                  followUp={status === "result"}
+                  speechLang={langMeta.speech}
+                  text={text}
+                  setText={setText}
+                  image={image}
+                  setImage={setImage}
+                  onSubmit={submit}
+                  simple={prefs.simple}
+                  onNotice={setNotice}
+                />
+                <p className="flex items-center gap-2 px-2 text-sm text-ink-soft">
+                  <ShieldCheck className="size-4 shrink-0 text-safe" aria-hidden="true" />
+                  {t.neverAsk}
+                </p>
+              </div>
+            </div>
+
+            {/* RIGHT: what Sid can do, then whatever Sid is working on or answered */}
+            <div className="flex min-w-0 flex-col gap-6 lg:pt-2">
+              {status === "idle" && (
+                <>
+                  <div className={cn("flex flex-col gap-6", image && "lg:hidden")}>
+                    <ModeGuide t={t} onPick={pickExample} />
+                    <p className="text-sm text-ink-soft lg:ps-1">{t.privacyNote}</p>
+                  </div>
+                  {image && <ScreenshotStage image={image} line={t.gotScreenshot} />}
+                </>
+              )}
+
+              {status === "loading" && <PendingView t={t} text={fromLive ? "" : pendingText} image={shownImage} partial={partial} fromLive={fromLive} />}
+
+              {status === "error" && error && (
+                <section role="alert" className="flex flex-col items-center gap-4 py-8 text-center">
+                  <Sid mood="worried" className="size-28" />
+                  <h1 className="font-hand text-3xl font-bold text-ink">{t.errorTitle}</h1>
+                  <p className="max-w-md text-lg text-ink-soft">{t.errors[error.error] ?? error.message}</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {error.error !== "bad_input" && lastRequest && (
+                      <button
+                        type="button"
+                        onClick={() => ask(lastRequest)}
+                        className="h-12 rounded-full bg-mark px-6 font-bold text-on-mark shadow-[0_0.25rem_0_0_var(--ink)] active:translate-y-1 active:shadow-none"
+                      >
+                        {t.tryAgain}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={startOver}
+                      className="flex h-12 items-center gap-2 rounded-full bg-surface px-5 font-semibold text-ink ring-1 ring-line"
+                    >
+                      <RotateCcw className="size-5" aria-hidden="true" />
+                      {t.startOver}
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {status === "result" && result && (
+                <ResultView
+                  result={result}
+                  image={shownImage}
+                  t={t}
+                  simple={prefs.simple}
+                  busy={false}
+                  onNextScreenshot={nextScreenshot}
+                  onFixed={() => setCelebrating(result.mode === "scam_check" ? "safe" : "fixed")}
+                  onStartOver={startOver}
+                  onAskFamily={() => setFamily(true)}
+                  reply={
+                    // On wide screens the composer on the left is the follow-up box
+                    wide ? undefined : (
+                      <section className="flex flex-col gap-3" aria-label={t.followUp}>
+                        <p className="text-lg text-ink-soft">{t.followUpHelp}</p>
+                        <Composer
+                          t={{ ...t, ask: t.followUp }}
+                          followUp
+                          speechLang={langMeta.speech}
+                          text={text}
+                          setText={setText}
+                          image={image}
+                          setImage={setImage}
+                          onSubmit={submit}
+                          simple={prefs.simple}
+                          onNotice={setNotice}
+                        />
+                      </section>
+                    )
+                  }
+                />
+              )}
+              {status === "result" && answeredMs !== null && (
+                <p className="text-center text-sm text-ink-soft">{t.answeredIn((answeredMs / 1000).toFixed(1))}</p>
+              )}
+            </div>
+          </div>
         )}
-
-        {status === "loading" && <PendingView t={t} text={fromLive ? "" : pendingText} image={shownImage} partial={partial} fromLive={fromLive} />}
 
         {status === "live-pre" && (
           <LivePreflight
@@ -321,67 +420,6 @@ export function SidekickApp() {
               setFamily(true);
             }}
           />
-        )}
-
-        {status === "error" && error && (
-          <section role="alert" className="flex flex-col items-center gap-4 py-8 text-center">
-            <Sid mood="worried" className="size-28" />
-            <h1 className="text-2xl font-bold text-ink">{t.errorTitle}</h1>
-            <p className="max-w-md text-lg text-ink-soft">{t.errors[error.error] ?? error.message}</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {error.error !== "bad_input" && lastRequest && (
-                <button
-                  type="button"
-                  onClick={() => ask(lastRequest)}
-                  className="h-12 rounded-full bg-mark px-6 font-bold text-on-mark shadow-[0_0.25rem_0_0_var(--ink)] active:translate-y-1 active:shadow-none"
-                >
-                  {t.tryAgain}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={startOver}
-                className="flex h-12 items-center gap-2 rounded-full bg-surface px-5 font-semibold text-ink ring-1 ring-line"
-              >
-                <RotateCcw className="size-5" aria-hidden="true" />
-                {t.startOver}
-              </button>
-            </div>
-          </section>
-        )}
-
-        {status === "result" && result && (
-          <ResultView
-            result={result}
-            image={shownImage}
-            t={t}
-            simple={prefs.simple}
-            busy={false}
-            onNextScreenshot={nextScreenshot}
-            onFixed={() => setCelebrating(result.mode === "scam_check" ? "safe" : "fixed")}
-            onStartOver={startOver}
-            onAskFamily={() => setFamily(true)}
-            reply={
-<section className="flex flex-col gap-3" aria-label={t.followUp}>
-            <p className="text-lg text-ink-soft">{t.followUpHelp}</p>
-          <Composer
-            t={{ ...t, ask: t.followUp }}
-            followUp
-            speechLang={langMeta.speech}
-            text={text}
-            setText={setText}
-            image={image}
-            setImage={setImage}
-            onSubmit={submit}
-            simple={prefs.simple}
-            onNotice={setNotice}
-          />
-          </section>
-            }
-          />
-        )}
-        {status === "result" && answeredMs !== null && (
-          <p className="text-center text-sm text-ink-soft">{t.answeredIn((answeredMs / 1000).toFixed(1))}</p>
         )}
       </main>
 
@@ -417,5 +455,41 @@ export function SidekickApp() {
         />
       )}
     </>
+  );
+}
+
+const WIDE = "(min-width: 1024px)";
+/** True on screens wide enough for the side-by-side layout (Tailwind lg). */
+function useWide() {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(WIDE);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(WIDE).matches,
+    () => false,
+  );
+}
+
+/** Wide screens: the screenshot they just added, big, with Sid asking for the words to go with it. */
+function ScreenshotStage({ image, line }: { image: PreparedImage; line: string }) {
+  const phone = isPhoneShot(image.width, image.height);
+  return (
+    <section className="hidden flex-col items-center gap-5 lg:flex" aria-label={line}>
+      <div className="flex items-end gap-3 self-start">
+        <Sid mood="happy" className="size-16" />
+        <p className="bubble sticker max-w-md bg-surface px-4 py-3 font-hand text-lg font-bold text-ink">{line}</p>
+      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
+      <img
+        src={image.url}
+        alt=""
+        className={cn(
+          "sticker rotate-[1.2deg] rounded-[1.25rem] bg-surface object-contain",
+          phone ? "max-h-[72vh] w-auto max-w-[22rem]" : "max-h-[64vh] w-full",
+        )}
+      />
+    </section>
   );
 }

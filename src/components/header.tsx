@@ -12,6 +12,7 @@ export function Header({
   t,
   onHome,
   wide = false,
+  split = false,
 }: {
   prefs: Prefs;
   update: (p: Partial<Prefs>) => void;
@@ -19,9 +20,11 @@ export function Header({
   t: Strings;
   onHome: () => void;
   wide?: boolean;
+  /** Two-column home: narrow on phones, wide from lg up */
+  split?: boolean;
 }) {
   return (
-    <header className={`site-header mx-auto flex w-full ${wide ? "max-w-6xl" : "max-w-3xl"} flex-wrap items-center gap-1.5 px-3 pt-4 pb-2 sm:px-6`}>
+    <header className={`site-header mx-auto flex w-full ${wide ? "max-w-6xl" : split ? "max-w-3xl lg:max-w-6xl" : "max-w-3xl"} flex-wrap items-center gap-1.5 px-3 pt-4 pb-2 sm:px-6`}>
       <button
         type="button"
         onClick={onHome}

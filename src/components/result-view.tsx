@@ -5,7 +5,7 @@ import {
   ArrowRight,
   Camera,
   Check,
-  Lightbulb,
+  BookOpenText,
   MessageCircleHeart,
   Pointer,
   RotateCcw,
@@ -34,7 +34,7 @@ const MODE_STYLE: Record<Mode, { icon: typeof Pointer; chip: string }> = {
   show_me: { icon: Pointer, chip: "bg-sky-bg text-sky" },
   fix_it: { icon: Wrench, chip: "bg-fix-bg text-fix" },
   scam_check: { icon: ShieldAlert, chip: "bg-danger-bg text-danger" },
-  explain_it: { icon: Lightbulb, chip: "bg-learn-bg text-learn" },
+  explain_it: { icon: BookOpenText, chip: "bg-learn-bg text-learn" },
 };
 
 export const VERDICT = {
@@ -48,8 +48,9 @@ export const VERDICT = {
 const isCalm = (r: SidResult) => r.scam.verdict === "looks_safe" || r.scam.verdict === "check_address";
 
 export function moodFor(r: SidResult): Mood {
-  if (r.done) return "celebrating";
+  if (r.done) return "happy";
   if (r.mode === "scam_check" && (r.scam.verdict === "scam" || r.scam.verdict === "suspicious")) return "worried";
+  if (r.mode === "scam_check" && r.scam.verdict === "looks_safe") return "happy";
   return "helping";
 }
 
@@ -173,13 +174,13 @@ export function ResultView({
         <div className="grid gap-3 sm:grid-cols-2" lang={r.language} dir={dir}>
           {r.fix.what_went_wrong && (
             <section className="rounded-2xl bg-fix-bg p-4">
-              <h2 className="text-sm font-bold text-fix">{t.whatWentWrong}</h2>
+              <h2 className="font-hand text-base font-bold text-fix">{t.whatWentWrong}</h2>
               <p className="mt-1 text-lg text-ink">{r.fix.what_went_wrong}</p>
             </section>
           )}
           {r.fix.likely_cause && (
             <section className="rounded-2xl bg-surface p-4 ring-1 ring-line">
-              <h2 className="text-sm font-bold text-ink-soft">{t.likelyCause}</h2>
+              <h2 className="font-hand text-base font-bold text-ink-soft">{t.likelyCause}</h2>
               <p className="mt-1 text-lg text-ink">{r.fix.likely_cause}</p>
             </section>
           )}
@@ -194,11 +195,11 @@ export function ResultView({
           </p>
           {r.explain.key_points.length > 0 && (
             <>
-              <h2 className="mt-5 text-sm font-bold text-learn">{t.keyPoints}</h2>
+              <h2 className="mt-5 font-hand text-base font-bold text-learn">{t.keyPoints}</h2>
               <ul className="mt-2 flex flex-col gap-2">
                 {r.explain.key_points.map((k, i) => (
                   <li key={i} className="flex gap-2 text-lg text-ink">
-                    <Lightbulb className="mt-1 size-5 shrink-0 text-learn" aria-hidden="true" />
+                    <span className="mt-3 h-1.5 w-4 shrink-0 -rotate-6 rounded-full bg-mark ring-1 ring-ink/20" aria-hidden="true" />
                     <span>{k}</span>
                   </li>
                 ))}
@@ -210,7 +211,7 @@ export function ResultView({
 
       {/* The big instruction for the current step */}
       {showSteps && current && (
-        <section lang={r.language} dir={dir} aria-labelledby="sid-step" className="flex flex-col gap-3 rounded-2xl border-2 border-mark bg-mark/15 p-4 sm:p-5">
+        <section lang={r.language} dir={dir} aria-labelledby="sid-step" className="flex flex-col gap-3 rounded-[1.6rem_1.1rem_1.8rem_0.6rem] border-2 border-mark bg-mark/15 p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <p className="font-hand text-lg font-bold text-ink-soft" aria-live="polite">
               {r.mode === "fix_it" && <span className="me-2">{t.howToFix} ·</span>}
@@ -368,7 +369,7 @@ function ScamReasons({ result: r, t, dir }: { result: SidResult; t: Strings; dir
   if (!r.scam.reasons.length) return null;
   return (
     <section lang={r.language} dir={dir} className="rounded-2xl bg-surface p-4 ring-1 ring-line">
-      <h2 className="text-sm font-bold text-ink-soft">{t.whyScam}</h2>
+      <h2 className="font-hand text-base font-bold text-ink-soft">{t.whyScam}</h2>
       <ul className="mt-2 flex flex-col gap-2">
         {r.scam.reasons.map((x, i) => (
           <li key={i} className="flex gap-2 text-lg text-ink">
@@ -387,14 +388,14 @@ function Verdict({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "l
   const calm = isCalm(r);
   return (
     <section className="flex flex-col gap-4" lang={r.language} dir={dir}>
-      <div className={cn("pop-in flex items-center gap-4 rounded-3xl p-5 ring-2", V.box)}>
+      <div className={cn("pop-in hand-cut flex -rotate-[0.6deg] items-center gap-4 p-5 ring-2", V.box)}>
         <V.icon className="size-12 shrink-0" strokeWidth={2.2} aria-hidden="true" />
         <p className="text-3xl leading-tight font-bold">{t.verdict[v]}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {r.scam.do_not.length > 0 && (
-          <section className={cn("rounded-2xl p-4", calm ? "bg-surface ring-1 ring-line" : "bg-danger-bg")}>
-            <h2 className={cn("text-sm font-bold", calm ? "text-ink-soft" : "text-danger")}>{calm ? t.goodToKnow : t.doNot}</h2>
+          <section className={cn("bubble p-4", calm ? "bg-surface ring-1 ring-line" : "bg-danger-bg")}>
+            <h2 className={cn("font-hand text-base font-bold", calm ? "text-ink-soft" : "text-danger")}>{calm ? t.goodToKnow : t.doNot}</h2>
             <ul className="mt-2 flex flex-col gap-2">
               {r.scam.do_not.map((x, i) => (
                 <li key={i} className="flex gap-2 text-lg text-ink">
@@ -410,8 +411,8 @@ function Verdict({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "l
           </section>
         )}
         {r.scam.how_to_close.length > 0 && (
-          <section className="rounded-2xl bg-safe-bg p-4">
-            <h2 className="text-sm font-bold text-safe">{calm ? t.toBeSure : t.howToClose}</h2>
+          <section className="bubble-user bg-safe-bg p-4">
+            <h2 className="font-hand text-base font-bold text-safe">{calm ? t.toBeSure : t.howToClose}</h2>
             <ol className="mt-2 flex flex-col gap-2">
               {r.scam.how_to_close.map((x, i) => (
                 <li key={i} className="flex gap-2 text-lg text-ink">
