@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { apiKeys, clientFor, isMissingModel, isOverloadError, isQuotaError, isTimeoutError, markQuotaExceeded } from "./keys";
+import { apiKeys, clientFor, isOverloadError, isQuotaError, isTimeoutError, markQuotaExceeded } from "./keys";
 import type { SidRequest, SidResult } from "./types";
 
 export const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
@@ -140,51 +140,89 @@ export async function askSid(req: SidRequest): Promise<SidResult> {
       .join("\n\n"),
   });
 
-  let lastErr: unknown;
-  let sawQuota = false;
-  let sawTimeout = false;
-  const started = Date.now();
-  const keys = apiKeys();
-  models: for (const [i, model] of MODELS.entries()) {
-    for (const { index, key } of keys) {
-      // Keep the whole request under Vercel's 60s limit
-      const left = 55_000 - (Date.now() - started);
-      if (left < 4_000) break models;
-      const budget = i === 0 ? Math.min(20_000, left) : i === MODELS.length - 1 ? left : Math.min(14_000, left);
-      try {
-        const res = await clientFor(key).models.generateContent({
-          model,
-          contents: [{ role: "user", parts }],
-          config: {
-            systemInstruction: SYSTEM,
-            responseMimeType: "application/json",
-            responseSchema,
-            temperature: 0.3,
-            abortSignal: AbortSignal.timeout(budget),
-          },
-        });
-        const text = res.text;
-        if (!text) throw new Error("Empty response");
-        return { ...normalize(JSON.parse(text)), model } as SidResult;
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[sid] ${model} (key ${index + 1}) failed:`, String(err).slice(0, 160));
-        if (isQuotaError(err)) {
-          // This key is out of quota: try the other key with the same model
-          sawQuota = true;
-          markQuotaExceeded(index);
-          continue;
-        }
-        if (isTimeoutError(err)) sawTimeout = true;
-        if (isOverloadError(err) || isTimeoutError(err) || isMissingModel(err) || err instanceof SyntaxError) {
-          continue models; // same problem for every key: move on to the next model
-        }
-        break models;
+  // Hedged fallback: start the best model; if it fails, or hasn't answered after a few
+  // seconds (busy models can hang), start the next one too and take whichever answers first.
+  const hedgeMs = req.image ? 9_000 : 6_000;
+  const deadline = AbortSignal.timeout(55_000); // stay under Vercel's 60s limit
+  const errors: unknown[] = [];
+  const ctrls: AbortController[] = [];
+  return new Promise<SidResult>((resolve, reject) => {
+    let next = 0;
+    let running = 0;
+    let done = false;
+    let hedge: ReturnType<typeof setTimeout> | undefined;
+    const finish = () => {
+      done = true;
+      clearTimeout(hedge);
+      ctrls.forEach((c) => c.abort());
+    };
+    const launch = () => {
+      clearTimeout(hedge);
+      if (done || next >= MODELS.length || deadline.aborted) return;
+      const model = MODELS[next++];
+      running++;
+      const ctrl = new AbortController();
+      ctrls.push(ctrl);
+      hedge = setTimeout(launch, hedgeMs);
+      tryModel(model, parts, AbortSignal.any([ctrl.signal, deadline])).then(
+        (r) => {
+          if (done) return;
+          finish();
+          resolve({ ...r, model });
+        },
+        (err) => {
+          running--;
+          if (done) return;
+          errors.push(err);
+          if (next < MODELS.length && !deadline.aborted) launch();
+          else if (running === 0) {
+            finish();
+            const kind = errors.every(isQuotaError)
+              ? "quota"
+              : errors.some(isTimeoutError)
+                ? "timeout"
+                : errors.some(isOverloadError)
+                  ? "overloaded"
+                  : "failed";
+            reject(new SidFailure(kind, errors[errors.length - 1]));
+          }
+        },
+      );
+    };
+    launch();
+  });
+}
+
+/** One model, trying the second key if the first is out of quota. */
+async function tryModel(model: string, parts: Array<Record<string, unknown>>, signal: AbortSignal): Promise<SidResult> {
+  let lastErr: unknown = new Error("No API key");
+  for (const { index, key } of apiKeys()) {
+    try {
+      const res = await clientFor(key).models.generateContent({
+        model,
+        contents: [{ role: "user", parts }],
+        config: {
+          systemInstruction: SYSTEM,
+          responseMimeType: "application/json",
+          responseSchema,
+          temperature: 0.3,
+          abortSignal: signal,
+        },
+      });
+      const text = res.text;
+      if (!text) throw new Error("Empty response");
+      return normalize(JSON.parse(text));
+    } catch (err) {
+      lastErr = err;
+      if (!signal.aborted || isTimeoutError(err)) console.warn(`[sid] ${model} (key ${index + 1}) failed:`, String(err).slice(0, 160));
+      if (isQuotaError(err)) {
+        markQuotaExceeded(index);
+        continue; // the other key may still have quota
       }
+      throw err;
     }
   }
-  const kind = sawQuota ? "quota" : sawTimeout ? "timeout" : isOverloadError(lastErr) ? "overloaded" : "failed";
-  throw new SidFailure(kind, lastErr);
+  throw lastErr;
 }
 
 /** Defensive clean-up so the UI never crashes on a slightly-off response. */
