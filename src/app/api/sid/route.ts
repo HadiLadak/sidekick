@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
   // Automated tests replay saved answers instead of calling Gemini (never in production)
   const mock = process.env.VERCEL_ENV !== "production" && (request.headers.get("x-sid-mock") || process.env.SID_MOCK);
-  if (mock) return streamResponse(mockStream(mock, req), started);
+  if (mock) return streamResponse(mockStream(mock, req), started, null);
 
   if (!hasKey()) {
     return fail(503, { error: "no_key", message: "Sid isn't connected yet. Try one of the examples below, or come back soon." }, started);
@@ -68,38 +68,51 @@ export async function POST(request: Request) {
   } catch (err) {
     return failFor(err, started);
   }
-  return streamResponse(stream, started);
+  return streamResponse(stream, started, (skip) => streamSid(req, request.signal, skip));
 }
 
 /**
  * Streams the answer as NDJSON so the page can show the title and verdict right away:
  *   {"t":"start","model","ms"}  {"t":"partial","data"}...  {"t":"done","result"}  or  {"t":"error",...}
  */
-function streamResponse({ model, chunks }: SidStream, started: number) {
+function streamResponse(first: SidStream, started: number, reopen: ((skip: string[]) => Promise<SidStream>) | null) {
   const enc = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (o: unknown) => controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+      let { model, chunks } = first;
+      const failed: string[] = [];
       send({ t: "start", model, ms: Date.now() - started });
-      let text = "";
-      let lastSent = "";
-      try {
-        for await (const c of chunks) {
-          text += c;
-          const partial = parsePartialJson(text);
-          const json = partial === undefined ? "" : JSON.stringify(partial);
-          if (json && json !== lastSent) {
-            lastSent = json;
-            send({ t: "partial", data: partial });
+      for (;;) {
+        let text = "";
+        let lastSent = "";
+        try {
+          for await (const c of chunks) {
+            text += c;
+            const partial = parsePartialJson(text);
+            const json = partial === undefined ? "" : JSON.stringify(partial);
+            if (json && json !== lastSent) {
+              lastSent = json;
+              send({ t: "partial", data: partial });
+            }
           }
+          const ms = Date.now() - started;
+          const result: SidResult = { ...normalize(JSON.parse(text)), model, ms };
+          console.log(`[sid] answered by ${model} in ${ms}ms (mode ${result.mode}${failed.length ? `, after ${failed.join(", ")} broke` : ""})`);
+          send({ t: "done", result });
+          break;
+        } catch (err) {
+          console.error(`[sid] stream from ${model} broke after ${Date.now() - started}ms`, String(err).slice(0, 200));
+          failed.push(model);
+          // A model can fail half-way (e.g. 503 mid-stream): start over on the next one
+          const next = reopen && failed.length < 3 ? await reopen(failed).catch(() => null) : null;
+          if (!next) {
+            send({ t: "error", error: "model_failed", message: "Sid lost his train of thought. Try again.", ms: Date.now() - started });
+            break;
+          }
+          ({ model, chunks } = next);
+          send({ t: "restart", model });
         }
-        const ms = Date.now() - started;
-        const result: SidResult = { ...normalize(JSON.parse(text)), model, ms };
-        console.log(`[sid] answered by ${model} in ${ms}ms (first chunk sent earlier, mode ${result.mode})`);
-        send({ t: "done", result });
-      } catch (err) {
-        console.error(`[sid] stream from ${model} broke after ${Date.now() - started}ms`, String(err).slice(0, 200));
-        send({ t: "error", error: "model_failed", message: "Sid lost his train of thought. Try again.", ms: Date.now() - started });
       }
       controller.close();
     },

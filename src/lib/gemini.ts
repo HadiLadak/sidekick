@@ -161,8 +161,9 @@ export interface SidStream {
  * starts; if it fails, or has sent nothing after a few seconds, the next cheap model starts
  * too, and whichever speaks first wins (the others are cancelled).
  */
-export function streamSid(req: SidRequest, signal?: AbortSignal): Promise<SidStream> {
+export function streamSid(req: SidRequest, signal?: AbortSignal, skip: string[] = []): Promise<SidStream> {
   const parts = buildParts(req);
+  const models = MODELS.filter((m) => !skip.includes(m));
   const hedgeMs = req.image ? 6_000 : 4_000;
   const deadline = AbortSignal.any([AbortSignal.timeout(50_000), ...(signal ? [signal] : [])]);
   const errors: unknown[] = [];
@@ -174,12 +175,12 @@ export function streamSid(req: SidRequest, signal?: AbortSignal): Promise<SidStr
     let hedge: ReturnType<typeof setTimeout> | undefined;
     const launch = () => {
       clearTimeout(hedge);
-      if (done || next >= MODELS.length || deadline.aborted) return;
-      const model = MODELS[next++];
+      if (done || next >= models.length || deadline.aborted) return;
+      const model = models[next++];
       running++;
       const ctrl = new AbortController();
       ctrls.push(ctrl);
-      if (next < MODELS.length && canHedge(MODELS[next])) hedge = setTimeout(launch, hedgeMs);
+      if (next < models.length && canHedge(models[next])) hedge = setTimeout(launch, hedgeMs);
       openModel(model, parts, AbortSignal.any([ctrl.signal, deadline])).then(
         (chunks) => {
           if (done) {
@@ -195,7 +196,7 @@ export function streamSid(req: SidRequest, signal?: AbortSignal): Promise<SidStr
           running--;
           if (done) return;
           errors.push(err);
-          if (next < MODELS.length && !deadline.aborted) launch();
+          if (next < models.length && !deadline.aborted) launch();
           else if (running === 0) {
             done = true;
             clearTimeout(hedge);

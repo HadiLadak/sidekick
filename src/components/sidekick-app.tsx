@@ -149,6 +149,7 @@ export function SidekickApp() {
           if (!line || ctrl.signal.aborted) continue;
           const ev = JSON.parse(line);
           if (ev.t === "partial") setPartial(ev.data);
+          else if (ev.t === "restart") setPartial(null); // the server switched models half-way
           else if (ev.t === "done") {
             setAnsweredMs(performance.now() - t0);
             return showResult(ev.result as SidResult, req);
