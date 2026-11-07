@@ -166,6 +166,7 @@ export function LiveView({
   const [switching, setSwitching] = useState(false);
   const [notice, setNotice] = useState("");
   const [wholeScreen, setWholeScreen] = useState(false);
+  const [allDone, setAllDone] = useState(false);
   const lastQuestion = useRef("");
   const autoFloat = useRef<(() => void) | null>(null);
   const autoFloated = useRef(false);
@@ -235,7 +236,7 @@ export function LiveView({
               next[i] = { ...next[i], done: true };
               return next;
             });
-            if (e.allDone) setTimeout(() => cb.current.onCelebrate(), 1200);
+            if (e.allDone) setAllDone(true); // offer "It's fixed"; the user decides
             break;
           case "ask-family":
             cb.current.onAskFamily(e.summary, sidRef.current?.latestFrame ?? null);
@@ -488,6 +489,19 @@ export function LiveView({
       )}
 
       <div className="flex flex-wrap gap-2 lg:col-start-2">
+        {steps.length > 0 && (
+          <button
+            type="button"
+            onClick={() => cb.current.onCelebrate()}
+            className={cn(
+              "flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-lg font-bold ring-2",
+              allDone ? "pop-in bg-safe text-safe-bg ring-safe" : "bg-safe-bg text-safe ring-safe",
+            )}
+          >
+            <Check className="size-5" aria-hidden="true" />
+            {c.itsFixed}
+          </button>
+        )}
         {canSwitch && (
           <button
             type="button"

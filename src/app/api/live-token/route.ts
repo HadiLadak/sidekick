@@ -31,6 +31,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const lang = typeof body.lang === "string" ? body.lang.slice(0, 5) : "en";
   let attempt = Math.max(0, Number(body.attempt) || 0);
+  // Resuming after a dropped connection: same model and key, with the session's resume handle
+  const handle = typeof body.handle === "string" && body.handle.length < 4096 ? body.handle : undefined;
 
   for (; attempt < combos.length; attempt++) {
     const { model, key, index } = combos[attempt];
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
           uses: 1,
           expireTime: new Date(now + 30 * 60_000).toISOString(),
           newSessionExpireTime: new Date(now + 2 * 60_000).toISOString(),
-          liveConnectConstraints: { model, config: liveConfig(lang) },
+          liveConnectConstraints: { model, config: liveConfig(lang, handle) },
         },
       });
       return NextResponse.json(

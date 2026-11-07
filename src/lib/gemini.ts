@@ -10,8 +10,7 @@ const LITE = [process.env.GEMINI_MODEL || "gemini-3.5-flash-lite", "gemini-3.1-f
 const LAST_RESORT = ["gemini-3.8-flash", "gemini-3.7-flash"];
 export const MODELS = [...LITE, ...LAST_RESORT].filter((m, i, a) => a.indexOf(m) === i);
 export const MODEL = MODELS[0];
-/** Only cheap models are started early when another is slow; Flash only on failure. */
-const canHedge = (model: string) => model.includes("lite");
+
 
 export class SidFailure extends Error {
   constructor(
@@ -110,7 +109,7 @@ export const responseSchema = {
 
 const SYSTEM = `You are Sid, a warm, patient tech sidekick for people who find phones and computers confusing (often older parents). You see the user's screenshot and/or read their message, pick ONE mode, and help.
 
-Voice: short sentences, everyday words, no jargon (or explain it in brackets), never condescending. Be specific to what is on the screen: name buttons exactly as they appear.
+Voice: short sentences, everyday words, no jargon (or explain it in parentheses, like this: two-step verification (an extra security step); never use square brackets), never condescending. Be specific to what is on the screen: name buttons exactly as they appear.
 
 Language: answer in the language the user wrote or spoke in. If they gave no text, use the UI language provided. Urdu must be in Urdu script, Arabic in Arabic script.
 
@@ -120,7 +119,7 @@ Modes and what to fill (fill unused sections with empty strings/arrays):
 - scam_check: scam.verdict, scam.reasons (concrete clues you see: sender, link domain, urgency, typos, payment requests), scam.do_not, scam.how_to_close (safe ways to close or delete it, step 1 is the safe button to tap with box_2d in steps if visible). In Canada, CRA, Canada Post, Interac e-Transfer, banks and Service Canada never ask for payment or personal info by text with a link. Look-alike domains are scams. If it is a genuine message, say looks_safe and explain why. For a fake warning or pop-up inside a web browser, the safe way out is the browser's own close button (the X on the tab or at the top-right corner of the window), never a button, link or X drawn inside the pop-up itself: those can be fake and trigger the scam.
 - explain_it: explain.answer and explain.key_points.
 
-box_2d: [ymin, xmin, ymax, xmax] normalized to 0-1000 over the whole screenshot. Draw it tightly around the single element the user should tap for step 1 only. Leave box_2d empty for later steps whose element is not on this screenshot, and empty everywhere when there is no screenshot.
+box_2d: [ymin, xmin, ymax, xmax] normalized to 0-1000 over the whole screenshot. Draw it tightly around the single element the user should tap for step 1 only. Leave box_2d empty for later steps whose element is not on this screenshot, and empty everywhere when there is no screenshot. Only box something you can actually see in the screenshot. If the thing to tap is not visible (for example the browser's back arrow when the screenshot shows only the page, or a button that is off-screen), leave box_2d empty and say in words where to find it (\"the back arrow at the top left of your browser, above this page\"). Never box a different element as a stand-in for it.
 
 Safety: never ask for passwords, PINs, codes or card numbers. If the screenshot shows any of these, set sensitive_info_visible = true. Never tell the user to call a phone number, click a link or pay anything shown in a suspicious message. For anything involving money that may be a scam, tell them to contact their bank using the number on the back of their card.
 
@@ -164,57 +163,38 @@ export interface SidStream {
 export function streamSid(req: SidRequest, signal?: AbortSignal, skip: string[] = []): Promise<SidStream> {
   const parts = buildParts(req);
   const models = MODELS.filter((m) => !skip.includes(m));
-  const hedgeMs = req.image ? 6_000 : 4_000;
+  const started = Date.now();
   const deadline = AbortSignal.any([AbortSignal.timeout(50_000), ...(signal ? [signal] : [])]);
   const errors: unknown[] = [];
-  const ctrls: AbortController[] = [];
-  return new Promise<SidStream>((resolve, reject) => {
-    let next = 0;
-    let running = 0;
-    let done = false;
-    let hedge: ReturnType<typeof setTimeout> | undefined;
-    const launch = () => {
-      clearTimeout(hedge);
-      if (done || next >= models.length || deadline.aborted) return;
-      const model = models[next++];
-      running++;
+  return (async () => {
+    for (const [i, model] of models.entries()) {
+      if (deadline.aborted) break;
+      // Each model gets ~6s to START answering, then we fall through to the next one.
+      // The last model gets whatever time is left. Once text flows, there is no cap.
+      const last = i === models.length - 1;
       const ctrl = new AbortController();
-      ctrls.push(ctrl);
-      if (next < models.length && canHedge(models[next])) hedge = setTimeout(launch, hedgeMs);
-      openModel(model, parts, AbortSignal.any([ctrl.signal, deadline])).then(
-        (chunks) => {
-          if (done) {
-            void chunks.return(undefined);
-            return;
-          }
-          done = true;
-          clearTimeout(hedge);
-          ctrls.forEach((c) => c !== ctrl && c.abort());
-          resolve({ model, chunks });
-        },
-        (err) => {
-          running--;
-          if (done) return;
-          errors.push(err);
-          if (next < models.length && !deadline.aborted) launch();
-          else if (running === 0) {
-            done = true;
-            clearTimeout(hedge);
-            const kind = errors.every(isQuotaError)
-              ? "quota"
-              : errors.some(isTimeoutError)
-                ? "timeout"
-                : errors.some(isOverloadError)
-                  ? "overloaded"
-                  : "failed";
-            reject(new SidFailure(kind, errors[errors.length - 1]));
-          }
-        },
-      );
-    };
-    launch();
-  });
+      const cap = setTimeout(() => ctrl.abort(new Error("first chunk timed out")), last ? 45_000 - (Date.now() - started) : FIRST_CHUNK_MS);
+      try {
+        const chunks = await openModel(model, parts, AbortSignal.any([ctrl.signal, deadline]));
+        clearTimeout(cap);
+        return { model, chunks };
+      } catch (err) {
+        clearTimeout(cap);
+        errors.push(ctrl.signal.aborted ? new Error(`timeout: ${model} sent nothing for ${FIRST_CHUNK_MS}ms`) : err);
+      }
+    }
+    const kind = errors.length && errors.every(isQuotaError)
+      ? "quota"
+      : errors.some(isTimeoutError)
+        ? "timeout"
+        : errors.some(isOverloadError)
+          ? "overloaded"
+          : "failed";
+    throw new SidFailure(kind, errors[errors.length - 1]);
+  })();
 }
+
+const FIRST_CHUNK_MS = 6_000;
 
 /** Opens one model's stream (second key if the first is out of quota) and waits for its first chunk. */
 async function openModel(model: string, parts: Array<Record<string, unknown>>, signal: AbortSignal): Promise<AsyncGenerator<string>> {
@@ -266,6 +246,18 @@ export async function askSid(req: SidRequest): Promise<SidResult> {
 
 /** Defensive clean-up so the UI never crashes on a slightly-off response. */
 export function normalize(r: Partial<SidResult>): SidResult {
+  return softenBrackets(normalizeShape(r));
+}
+
+/** Glossary hints come as "[an extra security step]": show them as plain parentheses instead. */
+export function softenBrackets<T>(v: T): T {
+  if (typeof v === "string") return v.replace(/\s*\[([^\]\n]{1,80})\]/g, " ($1)").replace(/\(\s+/g, "(") as T;
+  if (Array.isArray(v)) return v.map((x) => (typeof x === "number" ? x : softenBrackets(x))) as T;
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === "box_2d" ? x : softenBrackets(x)])) as T;
+  return v;
+}
+
+function normalizeShape(r: Partial<SidResult>): SidResult {
   const steps = Array.isArray(r.steps) ? r.steps : [];
   return {
     mode: r.mode ?? "explain_it",

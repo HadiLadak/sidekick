@@ -26,11 +26,14 @@ export function PendingView({
   text,
   image,
   partial,
+  fromLive = false,
 }: {
   t: Strings;
   text: string;
   image: PreparedImage | null;
   partial: PartialResult | null;
+  /** Live help failed and this is the screenshot fallback: label it as such, not with transcript text */
+  fromLive?: boolean;
 }) {
   const lines = image ? [...t.progressImage] : [...t.progressText];
   if (/https?:\/\/|www\.|\.[a-z]{2,3}\//i.test(text)) lines.splice(1, 0, t.progressLink);
@@ -39,6 +42,11 @@ export function PendingView({
     const id = setInterval(() => setN((i) => Math.min(i + 1, lines.length - 1)), 1800);
     return () => clearInterval(id);
   }, [lines.length]);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setSlow(true), 5000);
+    return () => clearTimeout(id);
+  }, []);
 
   const p = partial ?? {};
   const lang = p.language || undefined;
@@ -52,7 +60,7 @@ export function PendingView({
       {/* What the user sent */}
       {(text.trim() || image) && (
         <div className="flex flex-col items-end gap-2 self-end">
-          <p className="text-sm font-semibold text-ink-soft">{t.youAsked}</p>
+          <p className="text-sm font-semibold text-ink-soft">{fromLive ? t.fromLive : t.youAsked}</p>
           {text.trim() && (
             <p className="bubble-user max-w-md bg-ink px-4 py-3 text-lg text-paper" dir="auto">
               {text}
@@ -75,7 +83,7 @@ export function PendingView({
       <div className="flex items-end gap-3">
         <Sid mood="thinking" className="size-20 shrink-0" />
         <p className="bubble flex items-center gap-2 bg-surface px-5 py-3 text-xl font-semibold text-ink ring-1 ring-line" role="status" aria-live="polite">
-          {p.title ? t.progressImage[t.progressImage.length - 1] : lines[n]}
+          {p.title ? t.progressImage[t.progressImage.length - 1] : slow ? t.slow : lines[n]}
           <span className="flex gap-1" aria-hidden="true">
             <span className="dot size-2 rounded-full bg-ink" />
             <span className="dot size-2 rounded-full bg-ink [animation-delay:.15s]" />

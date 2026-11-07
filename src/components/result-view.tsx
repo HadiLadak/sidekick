@@ -309,7 +309,7 @@ export function ResultView({
               className="flex h-14 items-center justify-center gap-2 rounded-full bg-safe-bg px-6 text-lg font-bold text-safe ring-2 ring-safe disabled:opacity-50"
             >
               <Check className="size-5" aria-hidden="true" />
-              {t.allFixed}
+              {r.mode === "scam_check" ? t.gotIt : t.allFixed}
             </button>
           </div>
         )}

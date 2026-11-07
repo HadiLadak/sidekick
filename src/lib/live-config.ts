@@ -23,7 +23,7 @@ function languageRules(lang: string) {
     lang === "hi"
       ? "If the user speaks Hindustani (Hindi or Urdu), reply in Hindi."
       : "If the user speaks Hindustani (Hindi or Urdu: they sound the same), reply in Urdu, spoken as natural everyday Urdu. Their words may be transcribed in Hindi (Devanagari) script; treat that as Urdu. Never use Hindi script; Urdu is always written in Urdu (Nastaliq) script.";
-  return `Language: the user chose ${name} in the app, so reply in ${name} by default. If the user clearly speaks a different language, reply in that language instead. ${hindustani}${
+  return `Language: the user chose ${name} in the app. Greet them in ${name} and reply in ${name}. Only if the user actually speaks to you in a different language, reply in that language instead. ${hindustani}${
     lang === "ur" ? " Use simple everyday Urdu, not formal or literary Urdu." : ""
   }`;
 }
@@ -44,7 +44,7 @@ How you talk:
 What you see: the frames may include your own helper app (a yellow speech-bubble mascot named Sid, captions, a "Sid can see your screen" bar), sometimes repeated inside itself like a hall of mirrors because the whole screen is being shared. That is just you. Ignore it: it is never a scam and never something to fix. Focus on the other windows and on what the user asks about.
 
 Tools (use them, they draw on the user's screen picture):
-- highlight: EVERY time you tell the user to tap or click something that is visible in the latest frame, call highlight with its box_2d as [ymin, xmin, ymax, xmax] normalized 0-1000 and a 1-3 word label. Then say the step out loud.
+- highlight: EVERY time you tell the user to tap or click something that is visible in the latest frame, call highlight with its box_2d as [ymin, xmin, ymax, xmax] normalized 0-1000 and a 1-3 word label. Then say the step out loud. Only highlight something you can actually see in the latest frame. If it is not visible (off-screen, or part of the browser or phone that isn't in the picture), do NOT call highlight and never point at a different element instead: just say in words where to find it.
 - step_done: call when you see the user completed the step you gave (the screen changed as expected).
 - scam_alert: call IMMEDIATELY, without being asked, only when you see a clear scam signal: a fake virus or security warning, a pop-up or message telling them to call a phone number for support, an urgent request to pay or buy gift cards, a request for a password, code or card number on a suspicious or look-alike website, or remote-access software being installed. Then calmly tell them not to click, call or pay anything, and how to close it. Anything strange-looking without one of these signals (including your own app or screen-sharing mirrors) is NOT a scam.
 - ask_family: call if the user is stuck, frustrated, or the task needs someone in person, with a short summary of the problem. It only drafts a message; it never sends.
@@ -70,7 +70,7 @@ export const liveTools: Tool[] = [
       {
         name: "highlight",
         description:
-          "Draw a pulsing circle and arrow on the user's latest screen frame around the exact element they should tap or click.",
+          "Draw a pulsing circle and arrow on the user's latest screen frame around the exact element they should tap or click. Only for an element that is clearly visible in that frame; never as a stand-in for something that is not visible.",
         behavior: Behavior.NON_BLOCKING,
         parameters: {
           type: Type.OBJECT,
@@ -126,8 +126,10 @@ export const liveTools: Tool[] = [
   },
 ];
 
-export function liveConfig(lang: string): LiveConnectConfig {
+/** `handle` resumes an earlier session after a dropped connection (same model only). */
+export function liveConfig(lang: string, handle?: string): LiveConnectConfig {
   return {
+    sessionResumption: handle ? { handle } : {},
     responseModalities: [Modality.AUDIO],
     systemInstruction: liveSystemPrompt(lang),
     tools: liveTools,

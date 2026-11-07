@@ -1,6 +1,7 @@
 import type { Lang } from "./i18n";
 
 const en = {
+  itsFixed: "It's fixed",
   pickHint: "When Chrome asks, pick the window or tab you need help with, not your entire screen.",
   wholeScreenTip: "You're sharing your whole screen, so Sid can see himself. That's fine. Move Sid out of the way and switch to the app you need help with.",
   wholeScreenFloat: "Move Sid to a small window",
@@ -53,6 +54,7 @@ export type LiveCopy = typeof en;
 
 const fr: LiveCopy = {
   ...en,
+  itsFixed: "C'est réglé",
   pickHint: "Quand Chrome le demande, choisissez la fenêtre ou l'onglet qui pose problème, pas tout l'écran.",
   wholeScreenTip: "Vous partagez tout l'écran, donc Sid se voit lui-même. Ce n'est pas grave. Mettez Sid de côté et ouvrez l'application qui pose problème.",
   wholeScreenFloat: "Mettre Sid dans une petite fenêtre",
@@ -103,6 +105,7 @@ const fr: LiveCopy = {
 
 const es: LiveCopy = {
   ...en,
+  itsFixed: "Ya está arreglado",
   pickHint: "Cuando Chrome pregunte, elige la ventana o pestaña con la que necesitas ayuda, no toda la pantalla.",
   wholeScreenTip: "Estás compartiendo toda la pantalla, así que Sid se ve a sí mismo. No pasa nada. Aparta a Sid y abre la aplicación con la que necesitas ayuda.",
   wholeScreenFloat: "Poner a Sid en una ventana pequeña",
@@ -153,6 +156,7 @@ const es: LiveCopy = {
 
 const ur: LiveCopy = {
   ...en,
+  itsFixed: "ٹھیک ہو گیا",
   pickHint: "جب کروم پوچھے تو وہ ونڈو یا ٹیب چنیں جس میں مدد چاہیے، پوری اسکرین نہیں۔",
   wholeScreenTip: "آپ پوری اسکرین شیئر کر رہے ہیں، اس لیے سِڈ خود کو دیکھ رہا ہے۔ کوئی بات نہیں۔ سِڈ کو ایک طرف کریں اور وہ ایپ کھولیں جس میں مدد چاہیے۔",
   wholeScreenFloat: "سِڈ کو چھوٹی ونڈو میں رکھیں",
@@ -203,6 +207,7 @@ const ur: LiveCopy = {
 
 const ar: LiveCopy = {
   ...en,
+  itsFixed: "تم الإصلاح",
   pickHint: "عندما يسألك كروم، اختر النافذة أو علامة التبويب التي تحتاج مساعدة فيها، وليس الشاشة كلها.",
   wholeScreenTip: "أنت تشارك الشاشة كلها، لذلك يرى سِد نفسه. لا بأس. أبعد سِد جانبًا وافتح التطبيق الذي تحتاج مساعدة فيه.",
   wholeScreenFloat: "ضع سِد في نافذة صغيرة",

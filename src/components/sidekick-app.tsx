@@ -22,7 +22,7 @@ import { TapSpot } from "./tap-spot";
 import { cn } from "@/lib/utils";
 
 type Status = "idle" | "loading" | "result" | "error" | "live-pre" | "live";
-type AskRequest = { text: string; image: PreparedImage | null; history: Turn[]; demo?: Demo };
+type AskRequest = { text: string; image: PreparedImage | null; history: Turn[]; demo?: Demo; fromLive?: boolean };
 
 export function SidekickApp() {
   const { prefs, update, isDark, t, langMeta } = usePrefs();
@@ -35,7 +35,8 @@ export function SidekickApp() {
   const [history, setHistory] = useState<Turn[]>([]);
   const [error, setError] = useState<SidError | null>(null);
   const [notice, setNotice] = useState("");
-  const [celebrating, setCelebrating] = useState(false);
+  // "fixed" / "safe" only after the user taps It's fixed / Got it; never automatically
+  const [celebrating, setCelebrating] = useState<false | "fixed" | "safe">(false);
   const [family, setFamily] = useState(false);
   const [familyImage, setFamilyImage] = useState<PreparedImage | null>(null);
   const [liveSource, setLiveSource] = useState<LiveSource>("screen");
@@ -56,7 +57,7 @@ export function SidekickApp() {
       const img = frameToImage(frame);
       setImage(img);
       setProblem(lastQuestion);
-      ask({ text: lastQuestion, image: img, history: [] });
+      ask({ text: lastQuestion, image: img, history: [], fromLive: true });
     } else {
       setStatus("idle");
     }
@@ -64,6 +65,7 @@ export function SidekickApp() {
   const [lastRequest, setLastRequest] = useState<AskRequest | null>(null);
   const [partial, setPartial] = useState<PartialResult | null>(null);
   const [pendingText, setPendingText] = useState("");
+  const [fromLive, setFromLive] = useState(false);
   const [answeredMs, setAnsweredMs] = useState<number | null>(null);
   const askCtrl = useRef<AbortController | null>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -86,7 +88,6 @@ export function SidekickApp() {
         told_user: [r.summary, r.steps[0]?.instruction].filter(Boolean).join(" "),
       },
     ]);
-    if (r.done) setCelebrating(true);
   }
 
   async function ask(req: AskRequest) {
@@ -100,6 +101,7 @@ export function SidekickApp() {
     setPartial(null);
     setAnsweredMs(null);
     setPendingText(req.text);
+    setFromLive(!!req.fromLive);
     setShownImage(req.image);
     window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -333,8 +335,8 @@ export function SidekickApp() {
                       )}
                       <span className="flex flex-1 flex-col gap-1 p-3">
                         <span className="text-xs font-bold text-ink-soft">{t.modes[d.mode]}</span>
-                        <span className="leading-snug font-semibold text-ink" lang={d.lang} dir="auto">
-                          {d.label}
+                        <span className="leading-snug font-semibold text-ink" dir="auto">
+                          {t.demoLabels[d.id] ?? d.label}
                         </span>
                       </span>
                     </button>
@@ -348,7 +350,7 @@ export function SidekickApp() {
           </>
         )}
 
-        {status === "loading" && <PendingView t={t} text={pendingText} image={shownImage} partial={partial} />}
+        {status === "loading" && <PendingView t={t} text={fromLive ? "" : pendingText} image={shownImage} partial={partial} fromLive={fromLive} />}
 
         {status === "live-pre" && (
           <LivePreflight
@@ -369,7 +371,7 @@ export function SidekickApp() {
             simple={prefs.simple}
             onEnd={() => setStatus((s) => (s === "live" ? "idle" : s))}
             onFail={liveFailed}
-            onCelebrate={() => setCelebrating(true)}
+            onCelebrate={() => setCelebrating("fixed")}
             onAskFamily={(summary, frame) => {
               setProblem(summary);
               setFamilyImage(frame ? frameToImage(frame) : null);
@@ -413,7 +415,7 @@ export function SidekickApp() {
             simple={prefs.simple}
             busy={false}
             onNextScreenshot={nextScreenshot}
-            onFixed={() => setCelebrating(true)}
+            onFixed={() => setCelebrating(result.mode === "scam_check" ? "safe" : "fixed")}
             onStartOver={startOver}
             onAskFamily={() => setFamily(true)}
           />
@@ -433,7 +435,9 @@ export function SidekickApp() {
         <Celebration
           t={t}
           summary={result?.done ? result.summary : undefined}
-          onClose={() => {
+          safe={celebrating === "safe"}
+          onClose={() => setCelebrating(false)}
+          onStartOver={() => {
             setCelebrating(false);
             startOver();
           }}

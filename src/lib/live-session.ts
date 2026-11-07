@@ -59,8 +59,15 @@ function fromBase64(b64: string) {
   return out.buffer;
 }
 
+/** Tell our server why a live connection closed, so drops show up in the logs. */
+function reportClose(info: Record<string, unknown>) {
+  try {
+    navigator.sendBeacon?.("/api/live-log", JSON.stringify(info));
+  } catch {}
+}
+
 /** Counters exposed for automated tests. */
-const debug = { audioChunks: 0, loudChunks: 0, frames: 0 };
+const debug = { audioChunks: 0, loudChunks: 0, frames: 0, bytes: 0 };
 if (typeof window !== "undefined") (window as unknown as { __sidDebug: typeof debug }).__sidDebug = debug;
 
 export const liveSupported = () =>
@@ -103,6 +110,18 @@ export class LiveSid {
   private highlightedThisTurn = false;
   private stopped = false;
   private connected = false;
+  private connId = 0;
+  private attemptIdx = 0;
+  private resumeHandle: string | undefined;
+  private resumed = false;
+  private reconnecting = false;
+  private reconnects = 0;
+  /** Frame sending: only on change, at most every 2s, plus a keep-alive and one when the user speaks */
+  private lastSent = 0;
+  private dirty = true;
+  private wantFrame = false;
+  private sendCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
+  private connectedAt = Date.now();
   muted = false;
 
   constructor(
@@ -171,7 +190,10 @@ export class LiveSid {
         const pcm = new Int16Array(e.data);
         let peak = 0;
         for (let i = 0; i < pcm.length; i += 8) peak = Math.max(peak, Math.abs(pcm[i]));
-        if (peak > 1500) debug.loudChunks++;
+        if (peak > 1500) {
+          debug.loudChunks++;
+          this.wantFrame = true; // the user is talking: make sure Sid has a current picture
+        }
         this.session.sendRealtimeInput({ audio: { data: toBase64(e.data), mimeType: "audio/pcm;rate=16000" } });
       };
       src.connect(node);
@@ -194,7 +216,9 @@ export class LiveSid {
       emit({ type: "status", status: "live" });
       // Automated tests can type to Sid (localhost only)
       if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
-        (window as unknown as { __sidSay: (t: string) => void }).__sidSay = (t) => this.say(t);
+        const w = window as unknown as { __sidSay: (t: string) => void; __sidDrop: () => void };
+        w.__sidSay = (t) => this.say(t);
+        w.__sidDrop = () => this.session?.close(); // simulate a dropped connection
       }
     } catch (err) {
       const e = err as Error;
@@ -245,16 +269,17 @@ export class LiveSid {
     if (surface) this.opts.onEvent({ type: "surface", surface });
   }
 
-  private async connect(attempt: number): Promise<void> {
+  private async connect(attempt: number, handle?: string, allowFallback = true): Promise<void> {
     const res = await fetch("/api/live-token", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ lang: this.opts.lang, attempt }),
+      body: JSON.stringify({ lang: this.opts.lang, attempt, handle }),
     });
     const body = await res.json();
     if (!res.ok || !body.token) throw new Error(body.message || "token");
     const ai = new GoogleGenAI({ apiKey: body.token, apiVersion: "v1alpha" });
 
+    const id = ++this.connId;
     await new Promise<void>((resolve, reject) => {
       let opened = false;
       ai.live
@@ -263,9 +288,13 @@ export class LiveSid {
           config: { responseModalities: [Modality.AUDIO] },
           callbacks: {
             onmessage: (m) => {
+              if (m.goAway) console.warn("[sid live] goAway", JSON.stringify(m.goAway));
               if (m.setupComplete && !opened) {
                 opened = true;
+                this.connectedAt = Date.now();
                 this.connected = true;
+                this.attemptIdx = body.attempt ?? attempt;
+                this.resumed = !!handle;
                 resolve();
               }
               this.onMessage(m);
@@ -274,19 +303,15 @@ export class LiveSid {
               if (!opened) reject(new Error("socket"));
             },
             onclose: (e) => {
+              const info = { code: e.code, reason: e.reason || "", afterSec: Math.round((Date.now() - this.connectedAt) / 1000), model: body.model };
+              console.warn("[sid live] closed", JSON.stringify(info));
+              reportClose(info);
               if (!opened) {
                 reject(new Error(e.reason || "closed"));
                 return;
               }
-              if (!this.stopped) {
-                this.opts.onEvent({
-                  type: "error",
-                  fatal: true,
-                  frame: this.latest,
-                  message: "The live connection ended.",
-                });
-                this.stop(false);
-              }
+              // A dropped connection (time limit, rate limit, network): reconnect quietly
+              if (!this.stopped && id === this.connId) void this.reconnect();
             },
           },
         })
@@ -298,13 +323,16 @@ export class LiveSid {
     }).catch(async (err) => {
       this.session?.close();
       this.session = null;
-      if (body.hasFallback && !this.stopped) return this.connect((body.attempt ?? attempt) + 1);
+      // A resume handle only works on the same model, so fallbacks start a fresh session
+      if (allowFallback && body.hasFallback && !this.stopped) return this.connect((body.attempt ?? attempt) + 1);
       throw err;
     });
   }
 
   private onMessage(m: LiveServerMessage) {
     const emit = this.opts.onEvent;
+    const ru = m.sessionResumptionUpdate;
+    if (ru?.resumable && ru.newHandle) this.resumeHandle = ru.newHandle;
     const sc = m.serverContent;
     if (sc?.interrupted) this.flushAudio();
     for (const p of sc?.modelTurn?.parts ?? []) {
@@ -408,7 +436,8 @@ export class LiveSid {
 
   private sendFrame(force: boolean) {
     const v = this.videoEl;
-    if (!v || !this.canvas || !this.thumb || !v.videoWidth || this.stopped) return;
+    if (!v || !this.canvas || !this.thumb || !this.sendCanvas || !v.videoWidth || this.stopped) return;
+    // On-page preview: up to 1280px
     const scale = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
     const w = Math.round(v.videoWidth * scale);
     const h = Math.round(v.videoHeight * scale);
@@ -428,17 +457,32 @@ export class LiveSid {
     if (this.lastThumb) for (let i = 0; i < px.length; i += 4) diff += Math.abs(px[i] - this.lastThumb[i]);
     const changed = !this.lastThumb || diff / 576 > 6;
     this.lastThumb = px;
+    if (changed) this.dirty = true;
 
     const url = this.canvas.toDataURL("image/jpeg", 0.72);
     const frame: Frame = { url, data: url.split(",")[1], width: w, height: h };
     this.latest = frame;
     this.opts.onEvent({ type: "frame", frame });
-    // Steady ~1 fps: the Live model treats frames as a video stream and forgets stale ones.
-    this.session?.sendRealtimeInput({ video: { data: frame.data, mimeType: "image/jpeg" } });
-    debug.frames++;
-    void force;
 
+    // To Gemini: only when the screen changed (or the user just spoke, or a 12s keep-alive so
+    // Sid doesn't forget the screen), at most one frame every 2s, max 768px, compressed.
+    // Streaming every frame at full size ran into the Live API's token-per-minute limit.
     const now = Date.now();
+    const since = now - this.lastSent;
+    if (this.session && since >= 2000 && (force || this.dirty || this.wantFrame || since >= 12_000)) {
+      const s2 = Math.min(1, 768 / Math.max(w, h));
+      this.sendCanvas.width = Math.round(w * s2);
+      this.sendCanvas.height = Math.round(h * s2);
+      this.sendCanvas.getContext("2d")?.drawImage(this.canvas, 0, 0, this.sendCanvas.width, this.sendCanvas.height);
+      const small = this.sendCanvas.toDataURL("image/jpeg", 0.6).split(",")[1];
+      this.session.sendRealtimeInput({ video: { data: small, mimeType: "image/jpeg" } });
+      this.lastSent = now;
+      this.dirty = false;
+      this.wantFrame = false;
+      debug.frames++;
+      debug.bytes += small.length;
+    }
+
     if (changed) {
       this.changedAt = now;
       this.settledSent = false;
@@ -563,6 +607,44 @@ export class LiveSid {
     } finally {
       this.switching = false;
     }
+  }
+
+  /**
+   * Silent auto-reconnect. Uses the latest session-resumption handle so Sid keeps the
+   * conversation; if resuming fails, starts fresh and tells Sid not to greet again.
+   */
+  private async reconnect() {
+    if (this.reconnecting || this.stopped) return;
+    this.reconnecting = true;
+    this.session = null;
+    this.connected = false;
+    this.flushAudio();
+    // Resume on the same model first (Google may need a moment to release the old connection:
+    // "session is already connected to an existing client"), then fall back to a fresh session.
+    for (let i = 0; i < 5 && !this.stopped && this.reconnects < 25; i++) {
+      const resume = i < 3 && !!this.resumeHandle;
+      try {
+        await this.connect(this.attemptIdx, resume ? this.resumeHandle : undefined, !resume);
+        this.reconnects++;
+        console.warn(`[sid live] reconnected (${this.resumed ? "resumed" : "fresh session"})`);
+        if (!this.resumed) {
+          (this.session as Session | null)?.sendRealtimeInput({
+            text: "[The connection dropped for a moment and you lost the conversation so far. Do not greet again. Look at the screen and, in one short sentence, ask the user where they got to.]",
+          });
+        }
+        this.lastSent = 0;
+        this.sendFrame(true);
+        this.reconnecting = false;
+        return;
+      } catch (err) {
+        console.warn("[sid live] reconnect failed", String(err).slice(0, 120));
+        await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+      }
+    }
+    this.reconnecting = false;
+    if (this.stopped) return;
+    this.opts.onEvent({ type: "error", fatal: true, frame: this.latest, message: "The live connection ended." });
+    this.stop(false);
   }
 
   /** Send a typed message (for accessibility, or when the mic is muted). */

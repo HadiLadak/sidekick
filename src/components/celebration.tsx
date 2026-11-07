@@ -6,7 +6,23 @@ import { Sid } from "./sid";
 
 const COLORS = ["var(--mark)", "#ff8f7a", "#7cc4ff", "#7fe0b0", "#cfb2ff", "#1b2452"];
 
-export function Celebration({ t, onClose, summary }: { t: Strings; onClose: () => void; summary?: string }) {
+/**
+ * Shown only after the user taps "It's fixed" (or "Got it" on a scam check). Escape or Close just
+ * closes it and keeps the answer on screen; "Ask something new" starts over.
+ */
+export function Celebration({
+  t,
+  onClose,
+  onStartOver,
+  summary,
+  safe = false,
+}: {
+  t: Strings;
+  onClose: () => void;
+  onStartOver: () => void;
+  summary?: string;
+  safe?: boolean;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   const pieces = useMemo(
     () =>
@@ -55,17 +71,22 @@ export function Celebration({ t, onClose, summary }: { t: Strings; onClose: () =
       <div className="pop-in bubble relative flex flex-col items-center gap-3 bg-surface p-8 text-center ring-4 ring-ink">
         <Sid mood="celebrating" className="size-32" />
         <h2 id="celebrate-title" className="font-hand text-4xl font-bold text-ink">
-          <span className="marked">{t.celebrate}</span>
+          <span className="marked">{safe ? t.safeTitle : t.celebrate}</span>
         </h2>
-        <p className="text-xl text-ink-soft">{summary || t.celebrateSub}</p>
-        <form method="dialog" className="mt-2 w-full">
+        <p className="text-xl text-ink-soft">{safe ? t.safeSub : summary || t.celebrateSub}</p>
+        <div className="mt-2 flex w-full flex-col gap-2">
           <button
+            type="button"
             autoFocus
+            onClick={onStartOver}
             className="h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark shadow-[0_0.25rem_0_0_var(--ink)] active:translate-y-1 active:shadow-none"
           >
             {t.startOver}
           </button>
-        </form>
+          <form method="dialog">
+            <button className="h-12 w-full rounded-full font-semibold text-ink ring-1 ring-line hover:bg-surface-2">{t.close}</button>
+          </form>
+        </div>
       </div>
     </dialog>
   );

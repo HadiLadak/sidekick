@@ -68,7 +68,7 @@ if (process.env.SWITCH) {
   logs.push(`--- switched to camera`);
 }
 const t0 = Date.now();
-for (let i = 1; i <= 9; i++) {
+for (let i = 1; i <= Number(process.env.ROUNDS || 9); i++) {
   await app.waitForTimeout(3000);
   if (process.env.BACK_AT && i === Number(process.env.BACK_AT)) {
     await app.getByRole("button", { name: /back to my screen/i }).click();
@@ -81,12 +81,21 @@ for (let i = 1; i <= 9; i++) {
     await app.screenshot({ path: path.join(outDir, `floated-back.png`) });
     logs.push(`--- brought Sid back from the floating window`);
   }
+  // DROP_AT=i: kill the live connection to test the silent reconnect
+  if (process.env.DROP_AT && i === Number(process.env.DROP_AT)) {
+    await app.evaluate(() => window.__sidDrop?.());
+    logs.push(`--- dropped the connection`);
+  }
+  if (process.env.SAY2 && i === Number(process.env.SAY2_AT || 6)) {
+    await app.evaluate((t) => window.__sidSay?.(t), process.env.SAY2);
+    logs.push(`--- said: ${process.env.SAY2}`);
+  }
   // SAY="..." types a question to Sid (localhost test hook) at SAY_AT
   if (process.env.SAY && i === Number(process.env.SAY_AT || 2)) {
     await app.evaluate((t) => window.__sidSay?.(t), process.env.SAY);
     logs.push(`--- said: ${process.env.SAY}`);
   }
-  await app.screenshot({ path: path.join(outDir, `live-${i}.png`) });
+  if (i <= 9 || i % 10 === 0) await app.screenshot({ path: path.join(outDir, `live-${i}.png`) });
   const text = await app.locator("main").innerText();
   const dbg = await app.evaluate(() => JSON.stringify(window.__sidDebug));
   logs.push(`--- dbg ${dbg}`);

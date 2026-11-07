@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description:
     "Send Sid a screenshot or ask a question. Sid shows you exactly where to tap, fixes errors, spots scams and explains tech in plain words, in your language.",
   applicationName: "Sid",
+  appleWebApp: { capable: true, title: "Sid", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
   openGraph: {
     title: "Sid, your tech sidekick",
     description: "Screenshot in, plain-language help out. Shows you where to tap, spots scams, speaks your language.",
