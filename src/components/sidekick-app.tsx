@@ -17,6 +17,7 @@ import { LivePreflight, LiveView } from "./live-view";
 import { ModeGuide } from "./mode-guide";
 import { ResultView } from "./result-view";
 import { Sid } from "./sid";
+import { TapSpot } from "./tap-spot";
 import { cn } from "@/lib/utils";
 
 type Status = "idle" | "loading" | "result" | "error" | "live-pre" | "live";
@@ -194,8 +195,8 @@ export function SidekickApp() {
           <>
             <section className="flex items-end gap-3 sm:gap-4" aria-labelledby="hello">
               <Sid mood="helping" className="size-20 sm:size-28" label="Sid" />
-              <div className="bubble flex-1 bg-ink p-4 text-paper sm:p-5 dark:bg-surface dark:text-ink dark:ring-1 dark:ring-line">
-                <p id="hello" className="font-hand text-xl font-bold text-mark sm:text-2xl">
+              <div className="bubble flex-1 bg-surface p-4 text-ink ring-1 ring-line sm:p-5">
+                <p id="hello" className="font-hand text-xl font-bold text-ink-soft sm:text-2xl">
                   {t.hello}
                 </p>
                 <h1 className="mt-1 text-2xl leading-tight font-bold text-balance sm:text-3xl">{t.ask}</h1>
@@ -207,16 +208,28 @@ export function SidekickApp() {
                 aria-labelledby="live-cta"
                 className="relative overflow-hidden rounded-[1.75rem] bg-ink p-5 text-paper ring-1 ring-ink dark:bg-surface dark:text-ink dark:ring-line"
               >
-                <div className="flex items-center gap-4">
-                  <span className="relative grid size-14 shrink-0 place-items-center rounded-2xl bg-mark text-on-mark">
-                    <Radio className="size-7" aria-hidden="true" />
-                    <span className="absolute -top-1 -end-1 size-3.5 rounded-full bg-danger ring-2 ring-ink motion-safe:animate-pulse dark:ring-surface" aria-hidden="true" />
-                  </span>
+                <div className="flex items-start gap-4">
                   <div className="min-w-0 flex-1">
-                    <h2 id="live-cta" className="text-2xl leading-tight font-bold">
+                    <span className="relative mb-3 grid size-12 place-items-center rounded-2xl bg-mark text-on-mark">
+                      <Radio className="size-6" aria-hidden="true" />
+                      <span className="absolute -top-1 -end-1 size-3.5 rounded-full bg-danger ring-2 ring-ink motion-safe:animate-pulse dark:ring-surface" aria-hidden="true" />
+                    </span>
+                    <h2 id="live-cta" className="text-2xl leading-tight font-bold text-balance sm:text-3xl">
                       {lc.cta}
                     </h2>
-                    <p className="opacity-85">{lc.ctaSub}</p>
+                    <p className="mt-1 opacity-85 text-pretty">{lc.ctaSub}</p>
+                  </div>
+                  {/* A taste of what Sid does: the ring on the exact button */}
+                  <div className="h-40 w-28 shrink-0 -rotate-3 overflow-hidden rounded-[1.1rem] sm:h-48 sm:w-36" aria-hidden="true">
+                    <TapSpot
+                      src="/demos/video-call.jpg"
+                      width={780}
+                      height={1688}
+                      box={[66, 622, 111, 706]}
+                      label={t.tapHere}
+                      alt=""
+                      className="w-full border-[3px] border-mark shadow-none [&_img]:max-h-none [&_img]:w-full"
+                    />
                   </div>
                 </div>
                 <button

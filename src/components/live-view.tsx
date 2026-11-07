@@ -80,7 +80,7 @@ export function LivePreflight({
               onChange={() => setSource(o.id)}
               className="sr-only"
             />
-            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-ink text-mark">
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-ink text-mark dark:bg-mark dark:text-on-mark">
               <o.icon className="size-6" aria-hidden="true" />
             </span>
             <span className="flex flex-col">
