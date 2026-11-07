@@ -18,7 +18,7 @@ import { ModeGuide } from "./mode-guide";
 import { PendingView, type PartialResult } from "./pending-view";
 import { ResultView } from "./result-view";
 import { Sid } from "./sid";
-import { TapSpot } from "./tap-spot";
+import { isPhoneShot, TapSpot } from "./tap-spot";
 import { cn } from "@/lib/utils";
 
 type Status = "idle" | "loading" | "result" | "error" | "live-pre" | "live";
@@ -122,6 +122,7 @@ export function SidekickApp() {
         body: JSON.stringify({
           text: req.text,
           image: req.image ? { data: req.image.data, mimeType: req.image.mimeType } : null,
+          device: req.image ? (isPhoneShot(req.image.width, req.image.height) ? "phone" : "computer") : undefined,
           uiLanguage: prefs.lang,
           history: req.history,
         }),

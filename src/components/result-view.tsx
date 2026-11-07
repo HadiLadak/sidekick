@@ -12,6 +12,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   ShieldQuestion,
+  Globe,
+  Info,
   TriangleAlert,
   Volume2,
   VolumeX,
@@ -38,12 +40,16 @@ const MODE_STYLE: Record<Mode, { icon: typeof Pointer; chip: string }> = {
 export const VERDICT = {
   scam: { icon: ShieldAlert, box: "bg-danger-bg text-danger ring-danger" },
   suspicious: { icon: ShieldQuestion, box: "bg-caution-bg text-caution ring-caution" },
+  check_address: { icon: Globe, box: "bg-caution-bg text-caution ring-caution" },
   looks_safe: { icon: ShieldCheck, box: "bg-safe-bg text-safe ring-safe" },
 } as const;
 
+/** "Looks safe" and "Check the address" get calm wording, never warnings. */
+const isCalm = (r: SidResult) => r.scam.verdict === "looks_safe" || r.scam.verdict === "check_address";
+
 export function moodFor(r: SidResult): Mood {
   if (r.done) return "celebrating";
-  if (r.mode === "scam_check" && r.scam.verdict !== "looks_safe") return "worried";
+  if (r.mode === "scam_check" && (r.scam.verdict === "scam" || r.scam.verdict === "suspicious")) return "worried";
   return "helping";
 }
 
@@ -51,8 +57,9 @@ export function speechFor(r: SidResult, step: number, t: Strings) {
   const parts = [r.title + ".", r.summary];
   if (r.mode === "scam_check" && r.scam.verdict) {
     parts.unshift(t.verdict[r.scam.verdict] + ".");
-    if (r.scam.do_not.length) parts.push(t.doNot + ": " + r.scam.do_not.join(". "));
-    if (r.scam.how_to_close.length) parts.push(t.howToClose + ": " + r.scam.how_to_close.join(". "));
+    const calm = isCalm(r);
+    if (r.scam.do_not.length) parts.push((calm ? t.goodToKnow : t.doNot) + ": " + r.scam.do_not.join(". "));
+    if (r.scam.how_to_close.length) parts.push((calm ? t.toBeSure : t.howToClose) + ": " + r.scam.how_to_close.join(". "));
   } else if (r.mode === "fix_it") {
     parts.push(r.fix.what_went_wrong, r.fix.likely_cause);
   } else if (r.mode === "explain_it") {
@@ -273,7 +280,7 @@ export function ResultView({
 
       {/* Actions */}
       <div className="flex flex-col gap-3 pt-1">
-        {r.next_hint && !r.done && (
+        {r.next_hint && !r.done && (r.mode === "show_me" || r.mode === "fix_it") && (
           <p lang={r.language} dir={dir} className="font-hand text-lg text-ink-soft">
             {r.next_hint}
           </p>
@@ -292,7 +299,9 @@ export function ResultView({
           }}
         />
         {r.mode !== "explain_it" && (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className={cn("grid gap-3", r.mode !== "scam_check" && "sm:grid-cols-2")}>
+            {/* A next screenshot only makes sense while working through steps, not for scam checks */}
+            {r.mode !== "scam_check" && (
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -302,6 +311,7 @@ export function ResultView({
               <Camera className="size-5" aria-hidden="true" />
               {t.nextStep}
             </button>
+            )}
             <button
               type="button"
               onClick={onFixed}
@@ -371,6 +381,7 @@ function ScamReasons({ result: r, t, dir }: { result: SidResult; t: Strings; dir
 function Verdict({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "ltr" | "rtl" }) {
   const v = r.scam.verdict as keyof typeof VERDICT;
   const V = VERDICT[v];
+  const calm = isCalm(r);
   return (
     <section className="flex flex-col gap-4" lang={r.language} dir={dir}>
       <div className={cn("pop-in flex items-center gap-4 rounded-3xl p-5 ring-2", V.box)}>
@@ -379,12 +390,16 @@ function Verdict({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "l
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {r.scam.do_not.length > 0 && (
-          <section className="rounded-2xl bg-danger-bg p-4">
-            <h2 className="text-sm font-bold text-danger">{t.doNot}</h2>
+          <section className={cn("rounded-2xl p-4", calm ? "bg-surface ring-1 ring-line" : "bg-danger-bg")}>
+            <h2 className={cn("text-sm font-bold", calm ? "text-ink-soft" : "text-danger")}>{calm ? t.goodToKnow : t.doNot}</h2>
             <ul className="mt-2 flex flex-col gap-2">
               {r.scam.do_not.map((x, i) => (
                 <li key={i} className="flex gap-2 text-lg text-ink">
-                  <X className="mt-1 size-5 shrink-0 text-danger" strokeWidth={3} aria-hidden="true" />
+                  {calm ? (
+                    <Info className="mt-1 size-5 shrink-0 text-ink-soft" aria-hidden="true" />
+                  ) : (
+                    <X className="mt-1 size-5 shrink-0 text-danger" strokeWidth={3} aria-hidden="true" />
+                  )}
                   <span>{x}</span>
                 </li>
               ))}
@@ -393,7 +408,7 @@ function Verdict({ result: r, t, dir }: { result: SidResult; t: Strings; dir: "l
         )}
         {r.scam.how_to_close.length > 0 && (
           <section className="rounded-2xl bg-safe-bg p-4">
-            <h2 className="text-sm font-bold text-safe">{t.howToClose}</h2>
+            <h2 className="text-sm font-bold text-safe">{calm ? t.toBeSure : t.howToClose}</h2>
             <ol className="mt-2 flex flex-col gap-2">
               {r.scam.how_to_close.map((x, i) => (
                 <li key={i} className="flex gap-2 text-lg text-ink">

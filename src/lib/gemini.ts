@@ -74,7 +74,7 @@ export const responseSchema = {
     scam: {
       type: Type.OBJECT,
       properties: {
-        verdict: { type: Type.STRING, enum: ["scam", "suspicious", "looks_safe", "none"], description: "none when mode is not scam_check" },
+        verdict: { type: Type.STRING, enum: ["scam", "suspicious", "check_address", "looks_safe", "none"], description: "none when mode is not scam_check. check_address = a web page that looks genuine but whose address bar is not visible, so the domain cannot be confirmed." },
         reasons: stringArray,
         do_not: stringArray,
         how_to_close: stringArray,
@@ -109,6 +109,8 @@ export const responseSchema = {
 
 const SYSTEM = `You are Sid, a warm, patient tech sidekick for people who find phones and computers confusing (often older parents). You see the user's screenshot and/or read their message, pick ONE mode, and help.
 
+Words for actions: when the screenshot is from a computer, say "Click"; when it is from a phone or tablet, say "Tap" (the request says which). With no screenshot, use "tap or click".
+
 Voice: short sentences, everyday words, no jargon (or explain it in parentheses, like this: two-step verification (an extra security step); never use square brackets), never condescending. Be specific to what is on the screen: name buttons exactly as they appear.
 
 Language: answer in the language the user wrote or spoke in. If they gave no text, use the UI language provided. Urdu must be in Urdu script, Arabic in Arabic script.
@@ -118,7 +120,13 @@ Modes and what to fill (fill unused sections with empty strings/arrays):
 - For a navigation request with a screenshot, start from the screen already shown. Identify the next visible control that leads toward the goal, give its exact label or visual description, and provide its box_2d. If the destination is inside a menu, highlight the visible menu/profile button first and ask for a new screenshot after opening it. Do not tell the user to open an app or website they already have open. Do not invent coordinates for controls you cannot see.
 - show_me: steps (step 1 = what to tap on THIS screen, with box_2d).
 - fix_it: fix.what_went_wrong, fix.likely_cause, then steps to fix it.
-- scam_check: scam.verdict, scam.reasons (concrete clues you see: sender, link domain, urgency, typos, payment requests), scam.do_not, scam.how_to_close (safe ways to close or delete it, step 1 is the safe button to tap with box_2d in steps if visible). In Canada, CRA, Canada Post, Interac e-Transfer, banks and Service Canada never ask for payment or personal info by text with a link. Look-alike domains are scams. If it is a genuine message, say looks_safe and explain why. For a fake warning or pop-up inside a web browser, the safe way out is the browser's own close button (the X on the tab or at the top-right corner of the window), never a button, link or X drawn inside the pop-up itself: those can be fake and trigger the scam.
+- scam_check: scam.verdict, scam.reasons (concrete clues you see: sender, link domain, urgency, typos, payment requests), scam.do_not, scam.how_to_close (safe ways to close or delete it, step 1 is the safe button to tap with box_2d in steps if visible). In Canada, CRA, Canada Post, Interac e-Transfer, banks and Service Canada never ask for payment or personal info by text with a link. Look-alike domains are scams. If it is a genuine message, say looks_safe and explain why.
+
+Never certify a website as genuine from how it looks: scam pages copy logos, layout and text exactly. Only judge the domain if the browser's address bar is visible in the screenshot, and read it ONLY from the address bar (never from breadcrumbs, page headings, logos or links on the page). If a sign-in or payment page looks like the real one but no address bar is visible, use verdict check_address and say: the page looks like the real one, but check the address bar: it must say the real domain (for example canada.ca); you can't see it in this screenshot. Never call such a page looks_safe.
+
+Calm results (looks_safe and check_address): do_not holds calm "good to know" notes, not warnings; how_to_close holds ways to be extra sure, always including one independent check (for example "check the deposit in your bank app", "go to the site by typing the address yourself", "call the number on the back of your card"). Never say "completely safe" or "100% safe"; say "looks safe".
+
+Codes they didn't ask for: if the user received a verification, sign-in or security code they did not request, someone else may be trying to get into that account. Always tell them: don't share the code with anyone; change the password for that account now; run the account's security check (for example Google Security Checkup, or the security page of that account); and turn on two-step verification (an extra security step). For a fake warning or pop-up inside a web browser, the safe way out is the browser's own close button (the X on the tab or at the top-right corner of the window), never a button, link or X drawn inside the pop-up itself: those can be fake and trigger the scam.
 - explain_it: explain.answer and explain.key_points.
 
 box_2d: [ymin, xmin, ymax, xmax] normalized to 0-1000 over the whole screenshot. Draw it tightly around the single element the user should tap for step 1 only. Leave box_2d empty for later steps whose element is not on this screenshot, and empty everywhere when there is no screenshot. Only box something you can actually see in the screenshot. If the thing to tap is not visible (for example the browser's back arrow when the screenshot shows only the page, or a button that is off-screen), leave box_2d empty and say in words where to find it (\"the back arrow at the top left of your browser, above this page\"). Never box a different element as a stand-in for it.
@@ -142,7 +150,9 @@ ${req.history
     text: [
       `UI language: ${req.uiLanguage}`,
       history,
-      req.image ? "A screenshot is attached." : "No screenshot.",
+      req.image
+        ? `A screenshot is attached. It is from a ${req.device === "phone" ? "phone (say Tap)" : req.device === "computer" ? "computer (say Click)" : "device"}.`
+        : "No screenshot.",
       `User message: ${req.text.trim() || "(no text, just the screenshot: work out what they need help with)"}`,
     ]
       .filter(Boolean)
@@ -165,35 +175,67 @@ export interface SidStream {
 export function streamSid(req: SidRequest, signal?: AbortSignal, skip: string[] = []): Promise<SidStream> {
   const parts = buildParts(req);
   const models = MODELS.filter((m) => !skip.includes(m));
-  const started = Date.now();
-  const deadline = AbortSignal.any([AbortSignal.timeout(50_000), ...(signal ? [signal] : [])]);
+  const deadline = AbortSignal.any([AbortSignal.timeout(45_000), ...(signal ? [signal] : [])]);
   const errors: unknown[] = [];
-  return (async () => {
-    for (const [i, model] of models.entries()) {
-      if (deadline.aborted) break;
-      // Each model gets ~6s to START answering, then we fall through to the next one.
-      // The last model gets whatever time is left. Once text flows, there is no cap.
-      const last = i === models.length - 1;
-      const ctrl = new AbortController();
-      const cap = setTimeout(() => ctrl.abort(new Error("first chunk timed out")), last ? 45_000 - (Date.now() - started) : FIRST_CHUNK_MS);
-      try {
-        const chunks = await openModel(model, parts, AbortSignal.any([ctrl.signal, deadline]));
-        clearTimeout(cap);
-        return { model, chunks };
-      } catch (err) {
-        clearTimeout(cap);
-        errors.push(ctrl.signal.aborted ? new Error(`timeout: ${model} sent nothing for ${FIRST_CHUNK_MS}ms`) : err);
+  const ctrls: AbortController[] = [];
+  // Each model gets ~6s to START answering. After that the next model starts too (the slow one
+  // keeps going, in case it is about to answer), and whichever speaks first wins. A model that
+  // fails (quota, overload) hands over immediately.
+  return new Promise<SidStream>((resolve, reject) => {
+    let next = 0;
+    let running = 0;
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = () => {
+      done = true;
+      clearTimeout(timer);
+    };
+    const fail = () => {
+      finish();
+      const kind =
+        errors.length && errors.every(isQuotaError)
+          ? "quota"
+          : errors.some(isTimeoutError) || deadline.aborted
+            ? "timeout"
+            : errors.some(isOverloadError)
+              ? "overloaded"
+              : "failed";
+      reject(new SidFailure(kind, errors[errors.length - 1] ?? new Error("timeout")));
+    };
+    deadline.addEventListener("abort", () => !done && running === 0 && fail(), { once: true });
+    const launch = () => {
+      clearTimeout(timer);
+      if (done || deadline.aborted) return;
+      if (next >= models.length) {
+        if (running === 0) fail();
+        return;
       }
-    }
-    const kind = errors.length && errors.every(isQuotaError)
-      ? "quota"
-      : errors.some(isTimeoutError)
-        ? "timeout"
-        : errors.some(isOverloadError)
-          ? "overloaded"
-          : "failed";
-    throw new SidFailure(kind, errors[errors.length - 1]);
-  })();
+      const model = models[next++];
+      running++;
+      const ctrl = new AbortController();
+      ctrls.push(ctrl);
+      timer = setTimeout(launch, FIRST_CHUNK_MS);
+      openModel(model, parts, AbortSignal.any([ctrl.signal, deadline])).then(
+        (chunks) => {
+          if (done) {
+            void chunks.return(undefined);
+            return;
+          }
+          finish();
+          ctrls.forEach((c) => c !== ctrl && c.abort());
+          resolve({ model, chunks });
+        },
+        (err) => {
+          running--;
+          if (done) return;
+          errors.push(err);
+          if (next < models.length) launch();
+          else if (running === 0) fail();
+        },
+      );
+    };
+    launch();
+  });
 }
 
 const FIRST_CHUNK_MS = 6_000;
@@ -251,6 +293,18 @@ export function normalize(r: Partial<SidResult>): SidResult {
   return softenBrackets(normalizeShape(r));
 }
 
+/** English action words that match the device: "Click" on a computer screenshot, "Tap" on a phone. */
+export function matchVerbs<T>(v: T, device?: "phone" | "computer"): T {
+  if (!device) return v;
+  const swap = (x: string) =>
+    device === "computer"
+      ? x.replace(/Tap(ping|ped)?/g, (_, e = "") => "Click" + ({ ping: "ing", ped: "ed" }[e as string] ?? "")).replace(/tap(ping|ped)?/g, (_, e = "") => "click" + ({ ping: "ing", ped: "ed" }[e as string] ?? ""))
+      : x.replace(/Click(ing|ed)?/g, (_, e = "") => "Tap" + ({ ing: "ping", ed: "ped" }[e as string] ?? "")).replace(/click(ing|ed)?/g, (_, e = "") => "tap" + ({ ing: "ping", ed: "ped" }[e as string] ?? ""));
+  const walk = (x: unknown): unknown =>
+    typeof x === "string" ? swap(x) : Array.isArray(x) ? x.map(walk) : x && typeof x === "object" ? Object.fromEntries(Object.entries(x).map(([k, y]) => [k, k === "box_2d" ? y : walk(y)])) : x;
+  return walk(v) as T;
+}
+
 /** Glossary hints come as "[an extra security step]": show them as plain parentheses instead. */
 export function softenBrackets<T>(v: T): T {
   if (typeof v === "string") return v.replace(/\s*\[([^\]\n]{1,80})\]/g, " ($1)").replace(/\(\s+/g, "(") as T;
@@ -278,7 +332,7 @@ function normalizeShape(r: Partial<SidResult>): SidResult {
     })),
     fix: { what_went_wrong: r.fix?.what_went_wrong ?? "", likely_cause: r.fix?.likely_cause ?? "" },
     scam: {
-      verdict: (["scam", "suspicious", "looks_safe"] as const).find((v) => v === r.scam?.verdict) ?? "",
+      verdict: (["scam", "suspicious", "check_address", "looks_safe"] as const).find((v) => v === r.scam?.verdict) ?? "",
       reasons: r.scam?.reasons ?? [],
       do_not: r.scam?.do_not ?? [],
       how_to_close: r.scam?.how_to_close ?? [],

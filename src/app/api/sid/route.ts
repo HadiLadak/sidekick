@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasKey, normalize, responseSchema, SidFailure, streamSid, type SidStream } from "@/lib/gemini";
+import { hasKey, matchVerbs, normalize, responseSchema, SidFailure, streamSid, type SidStream } from "@/lib/gemini";
 import { parsePartialJson } from "@/lib/partial-json";
 import demoCache from "@/lib/demo-cache.json";
 import type { SidError, SidRequest, SidResult } from "@/lib/types";
@@ -50,13 +50,14 @@ export async function POST(request: Request) {
   const req: SidRequest = {
     text,
     image,
+    device: image && (body.device === "phone" || body.device === "computer") ? body.device : undefined,
     uiLanguage: typeof body.uiLanguage === "string" ? body.uiLanguage.slice(0, 10) : "en",
     history: Array.isArray(body.history) ? body.history.slice(-6) : [],
   };
 
   // Automated tests replay saved answers instead of calling Gemini (never in production)
   const mock = process.env.VERCEL_ENV !== "production" && (request.headers.get("x-sid-mock") || process.env.SID_MOCK);
-  if (mock) return streamResponse(mockStream(mock, req), started, null);
+  if (mock) return streamResponse(mockStream(mock, req), started, null, req.device);
 
   if (!hasKey()) {
     return fail(503, { error: "no_key", message: "Sid isn't connected yet. Try one of the examples below, or come back soon." }, started);
@@ -68,14 +69,24 @@ export async function POST(request: Request) {
   } catch (err) {
     return failFor(err, started);
   }
-  return streamResponse(stream, started, (skip) => streamSid(req, request.signal, skip));
+  return streamResponse(stream, started, (skip) => streamSid(req, request.signal, skip), req.device);
 }
 
 /**
  * Streams the answer as NDJSON so the page can show the title and verdict right away:
  *   {"t":"start","model","ms"}  {"t":"partial","data"}...  {"t":"done","result"}  or  {"t":"error",...}
  */
-function streamResponse(first: SidStream, started: number, reopen: ((skip: string[]) => Promise<SidStream>) | null) {
+function streamResponse(
+  first: SidStream,
+  started: number,
+  reopen: ((skip: string[]) => Promise<SidStream>) | null,
+  device?: "phone" | "computer",
+) {
+  // English answers: "Click" on computer screenshots, "Tap" on phone ones (other languages rely on the prompt)
+  const verbs = <T,>(x: T): T => {
+    const lang = (x as { language?: string } | null)?.language ?? "en";
+    return lang.startsWith("en") ? matchVerbs(x, device) : x;
+  };
   const enc = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -93,11 +104,11 @@ function streamResponse(first: SidStream, started: number, reopen: ((skip: strin
             const json = partial === undefined ? "" : JSON.stringify(partial);
             if (json && json !== lastSent) {
               lastSent = json;
-              send({ t: "partial", data: partial });
+              send({ t: "partial", data: verbs(partial) });
             }
           }
           const ms = Date.now() - started;
-          const result: SidResult = { ...normalize(JSON.parse(text)), model, ms };
+          const result: SidResult = verbs({ ...normalize(JSON.parse(text)), model, ms });
           console.log(`[sid] answered by ${model} in ${ms}ms (mode ${result.mode}${failed.length ? `, after ${failed.join(", ")} broke` : ""})`);
           send({ t: "done", result });
           break;

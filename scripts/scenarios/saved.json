@@ -1,0 +1,354 @@
+{
+ "unrequested-code": {
+  "mode": "scam_check",
+  "language": "en",
+  "title": "Someone is trying to access your account",
+  "summary": "This is a common trick by scammers to break into your account. Do not share the code with anyone.",
+  "sensitive_info_visible": false,
+  "steps": [],
+  "fix": {
+   "what_went_wrong": "",
+   "likely_cause": ""
+  },
+  "scam": {
+   "verdict": "scam",
+   "reasons": [
+    "The caller is asking for a verification code you did not request",
+    "Legitimate companies will never call and ask you to read them a verification code"
+   ],
+   "do_not": [
+    "Do not give the code to anyone on the phone or in a text",
+    "Do not click any links they may have sent"
+   ],
+   "how_to_close": [
+    "Hang up the phone immediately",
+    "Change the password for your Google account right away",
+    "Turn on two-step verification (an extra security step) if you have not already"
+   ]
+  },
+  "explain": {
+   "answer": "",
+   "key_points": []
+  },
+  "done": false,
+  "next_hint": "",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 1243,
+  "clientMs": 1275
+ },
+ "deposit-looks-safe": {
+  "mode": "scam_check",
+  "language": "en",
+  "title": "Unexpected Payroll Deposit Notification",
+  "summary": "This looks like a real deposit from your bank app, which is good news!",
+  "sensitive_info_visible": false,
+  "steps": [],
+  "fix": {
+   "what_went_wrong": "",
+   "likely_cause": ""
+  },
+  "scam": {
+   "verdict": "looks_safe",
+   "reasons": [
+    "The notification came directly inside your official bank app.",
+    "Money was added to your account rather than asked for."
+   ],
+   "do_not": [
+    "There is nothing to worry about here.",
+    "It is always good to check your account balance just to be sure."
+   ],
+   "how_to_close": [
+    "Open your bank app directly to see the deposit in your account list.",
+    "Check with your employer's payroll department if you have any questions."
+   ]
+  },
+  "explain": {
+   "answer": "",
+   "key_points": []
+  },
+  "done": false,
+  "next_hint": "",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 1319,
+  "clientMs": 1354
+ },
+ "urdu-otp-call": {
+  "mode": "explain_it",
+  "language": "ur",
+  "title": "فون پر آنے والا سیکیورٹی کوڈ کیا ہے؟",
+  "summary": "یہ کوڈ آپ کے اکاؤنٹ کی حفاظت کے لیے ہوتا ہے اور کسی کو کبھی نہیں بتانا چاہیے۔",
+  "sensitive_info_visible": false,
+  "steps": [],
+  "fix": {
+   "what_went_wrong": "",
+   "likely_cause": ""
+  },
+  "scam": {
+   "verdict": "",
+   "reasons": [],
+   "do_not": [],
+   "how_to_close": []
+  },
+  "explain": {
+   "answer": "یہ ایک خفیہ نمبر (ون ٹائم پاس ورڈ) ہوتا ہے جو آپ کے فون پر آتا ہے۔ جب کوئی آپ کے اکاؤنٹ میں داخل ہونا چاہے تو یہ تصدیق کے لیے بھیجا جاتا ہے۔",
+   "key_points": [
+    "یہ کوڈ بالکل چابی کی طرح ہے، اسے کسی کو فون پر ہرگز نہ بتائیں۔",
+    "اگر آپ نے خود یہ کوڈ نہیں منگوایا، تو اس کا مطلب ہے کوئی اور آپ کے اکاؤنٹ میں داخل ہونے کی کوشش کر رہا ہے۔",
+    "اس صورت میں فوراً اپنے اکاؤنٹ کا پاس ورڈ بدل دیں۔"
+   ]
+  },
+  "done": false,
+  "next_hint": "",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 1666,
+  "clientMs": 1698
+ },
+ "signin-no-address-bar": {
+  "mode": "scam_check",
+  "language": "en",
+  "title": "CRA sign-in page check",
+  "summary": "This page looks like the real CRA sign-in page, but you cannot see the web address in this screenshot.",
+  "sensitive_info_visible": false,
+  "steps": [],
+  "fix": {
+   "what_went_wrong": "",
+   "likely_cause": ""
+  },
+  "scam": {
+   "verdict": "check_address",
+   "reasons": [
+    "The page looks like the real CRA sign-in page.",
+    "The address bar is not visible in this screenshot, so the website address cannot be confirmed."
+   ],
+   "do_not": [
+    "Do not enter your password until you can see the web address.",
+    "Scammers often copy the exact look of government websites."
+   ],
+   "how_to_close": [
+    "Check the address bar at the very top of your browser to make sure it ends with canada.ca.",
+    "If you cannot see the address bar, type canada.ca directly into your browser yourself to be safe."
+   ]
+  },
+  "explain": {
+   "answer": "",
+   "key_points": []
+  },
+  "done": false,
+  "next_hint": "Send a new screenshot that shows the address bar at the top if you want me to check it.",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 1667,
+  "clientMs": 1771
+ },
+ "computer-says-click": {
+  "mode": "scam_check",
+  "language": "en",
+  "title": "Fake Virus Warning Scam",
+  "summary": "This is a very common fake virus warning trying to trick you. Do not call them, your computer is safe.",
+  "sensitive_info_visible": false,
+  "steps": [
+   {
+    "instruction": "Click the X at the top right corner to close the browser.",
+    "detail": "Use the main browser X, not the X inside the pop-up warning.",
+    "target_label": "Close",
+    "box_2d": [
+     24,
+     971,
+     37,
+     979
+    ]
+   }
+  ],
+  "fix": {
+   "what_went_wrong": "",
+   "likely_cause": ""
+  },
+  "scam": {
+   "verdict": "scam",
+   "reasons": [
+    "The address bar shows a fake website address, not Microsoft.",
+    "Real Microsoft warnings never tell you to call a phone number.",
+    "It uses scary words to rush you into making a mistake."
+   ],
+   "do_not": [
+    "Do not call the phone number on the screen.",
+    "Do not click buttons inside the fake message like Cancel or Call Now.",
+    "Do not pay anyone anything."
+   ],
+   "how_to_close": [
+    "Click the X at the very top right corner of the browser window to close it safely.",
+    "If the browser will not close, press and hold the power button on your computer until it turns off."
+   ]
+  },
+  "explain": {
+   "answer": "",
+   "key_points": []
+  },
+  "done": false,
+  "next_hint": "After you close the browser, send me a new screenshot if anything else looks strange.",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 2503,
+  "clientMs": 2539
+ },
+ "phone-says-tap": {
+  "mode": "fix_it",
+  "language": "en",
+  "title": "Phone storage is almost full",
+  "summary": "Your phone has run out of space for new photos. Let us open Settings to clear some room.",
+  "sensitive_info_visible": false,
+  "steps": [
+   {
+    "instruction": "Tap Settings",
+    "detail": "This will open your phone settings so you can free up space.",
+    "target_label": "Settings",
+    "box_2d": [
+     472,
+     113,
+     533,
+     886
+    ]
+   }
+  ],
+  "fix": {
+   "what_went_wrong": "Your phone's memory is full, so it cannot save new photos.",
+   "likely_cause": "Too many photos, videos, or apps are saved on your phone."
+  },
+  "scam": {
+   "verdict": "",
+   "reasons": [],
+   "do_not": [],
+   "how_to_close": []
+  },
+  "explain": {
+   "answer": "",
+   "key_points": []
+  },
+  "done": false,
+  "next_hint": "After you tap Settings, send me a new screenshot.",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 21597,
+  "clientMs": 21636
+ },
+ "back-arrow-not-visible": {
+  "mode": "show_me",
+  "language": "en",
+  "title": "Go back to the previous page",
+  "summary": "Don't worry, a 404 error just means the page you tried to reach is missing. You can easily go back.",
+  "sensitive_info_visible": false,
+  "steps": [
+   {
+    "instruction": "Click the back arrow at the top left of your browser.",
+    "detail": "This is the small arrow pointing to the left, usually found near the top-left corner of your screen above this page.",
+    "target_label": "Back arrow",
+    "box_2d": []
+   }
+  ],
+  "fix": {
+   "what_went_wrong": "",
+   "likely_cause": ""
+  },
+  "scam": {
+   "verdict": "",
+   "reasons": [],
+   "do_not": [],
+   "how_to_close": []
+  },
+  "explain": {
+   "answer": "",
+   "key_points": []
+  },
+  "done": false,
+  "next_hint": "After you click the back arrow, let me know if you need help finding anything else.",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 2264,
+  "clientMs": 2308
+ },
+ "canada-post-scam-text": {
+  "mode": "scam_check",
+  "language": "en",
+  "title": "Fake Canada Post text message",
+  "summary": "This text message is a scam. Canada Post never asks for money by text.",
+  "sensitive_info_visible": false,
+  "steps": [
+   {
+    "instruction": "Tap Report Junk to block the number.",
+    "detail": "This helps keep you safe from future messages.",
+    "target_label": "Report Junk",
+    "box_2d": [
+     270,
+     399,
+     287,
+     599
+    ]
+   }
+  ],
+  "fix": {
+   "what_went_wrong": "",
+   "likely_cause": ""
+  },
+  "scam": {
+   "verdict": "scam",
+   "reasons": [
+    "Canada Post never asks for payment by text message",
+    "The web address does not end in canada.ca",
+    "Creates false urgency by demanding payment within 24 hours"
+   ],
+   "do_not": [
+    "Do not tap the link",
+    "Do not enter your credit card or personal details",
+    "Do not reply to this text message"
+   ],
+   "how_to_close": [
+    "Tap Report Junk to delete the message and block the sender",
+    "Go to the official Canada Post website by typing canada.ca yourself to check any real deliveries"
+   ]
+  },
+  "explain": {
+   "answer": "",
+   "key_points": []
+  },
+  "done": false,
+  "next_hint": "After you report the junk, you can leave this screen.",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 1609,
+  "clientMs": 1643
+ },
+ "video-call": {
+  "mode": "show_me",
+  "language": "en",
+  "title": "Start a WhatsApp video call",
+  "summary": "Let's start your video call with Ali. Tap the camera icon at the top of the screen.",
+  "sensitive_info_visible": false,
+  "steps": [
+   {
+    "instruction": "Tap the video camera icon at the top right",
+    "detail": "This will start calling Ali on video.",
+    "target_label": "video camera icon",
+    "box_2d": [
+     76,
+     634,
+     98,
+     693
+    ]
+   }
+  ],
+  "fix": {
+   "what_went_wrong": "",
+   "likely_cause": ""
+  },
+  "scam": {
+   "verdict": "",
+   "reasons": [],
+   "do_not": [],
+   "how_to_close": []
+  },
+  "explain": {
+   "answer": "",
+   "key_points": []
+  },
+  "done": false,
+  "next_hint": "After you tap the camera, send me a new screenshot if you need help.",
+  "model": "gemini-3.5-flash-lite",
+  "ms": 1679,
+  "clientMs": 1713
+ }
+}

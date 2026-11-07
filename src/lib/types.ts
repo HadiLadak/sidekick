@@ -1,5 +1,5 @@
 export type Mode = "show_me" | "fix_it" | "scam_check" | "explain_it";
-export type Verdict = "scam" | "suspicious" | "looks_safe";
+export type Verdict = "scam" | "suspicious" | "check_address" | "looks_safe";
 
 /** [ymin, xmin, ymax, xmax], each normalized 0–1000 (Gemini's native box format). */
 export type Box2D = [number, number, number, number];
@@ -53,6 +53,8 @@ export interface Turn {
 export interface SidRequest {
   text: string;
   image?: { data: string; mimeType: string } | null;
+  /** What the screenshot is from (by its shape): decides "Click" vs "Tap" */
+  device?: "phone" | "computer";
   uiLanguage: string;
   history: Turn[];
 }
