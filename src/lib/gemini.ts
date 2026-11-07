@@ -2,9 +2,16 @@ import { Type } from "@google/genai";
 import { apiKeys, clientFor, isOverloadError, isQuotaError, isTimeoutError, markQuotaExceeded } from "./keys";
 import type { SidRequest, SidResult } from "./types";
 
-export const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-/** Newest fast Flash first; fall back when a model is overloaded or unavailable. */
-const MODELS = [MODEL, "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"].filter((m, i, a) => a.indexOf(m) === i);
+/**
+ * Free-tier quota decides the order: Flash-Lite models allow 500 requests a day, full Flash
+ * only 20. So Flash-Lite answers, and Flash is a last resort when both Lite models fail.
+ */
+const LITE = [process.env.GEMINI_MODEL || "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
+const LAST_RESORT = ["gemini-3.8-flash", "gemini-3.7-flash"];
+export const MODELS = [...LITE, ...LAST_RESORT].filter((m, i, a) => a.indexOf(m) === i);
+export const MODEL = MODELS[0];
+/** Only cheap models are started early when another is slow; Flash only on failure. */
+const canHedge = (model: string) => model.includes("lite");
 
 export class SidFailure extends Error {
   constructor(
@@ -74,6 +81,7 @@ export const responseSchema = {
         how_to_close: stringArray,
       },
       required: ["verdict", "reasons", "do_not", "how_to_close"],
+      propertyOrdering: ["verdict", "reasons", "do_not", "how_to_close"],
     },
     explain: {
       type: Type.OBJECT,
@@ -93,9 +101,10 @@ export const responseSchema = {
     "mode", "language", "title", "summary", "sensitive_info_visible", "steps",
     "fix", "scam", "explain", "done", "next_hint",
   ],
+  // Title and scam verdict first, so the page can show them while the steps are still arriving
   propertyOrdering: [
-    "mode", "language", "title", "summary", "sensitive_info_visible", "steps",
-    "fix", "scam", "explain", "done", "next_hint",
+    "mode", "language", "title", "scam", "summary", "sensitive_info_visible", "fix", "explain",
+    "steps", "done", "next_hint",
   ],
 };
 
@@ -108,7 +117,7 @@ Language: answer in the language the user wrote or spoke in. If they gave no tex
 Modes and what to fill (fill unused sections with empty strings/arrays):
 - show_me: steps (step 1 = what to tap on THIS screen, with box_2d).
 - fix_it: fix.what_went_wrong, fix.likely_cause, then steps to fix it.
-- scam_check: scam.verdict, scam.reasons (concrete clues you see: sender, link domain, urgency, typos, payment requests), scam.do_not, scam.how_to_close (safe ways to close or delete it, step 1 is the safe button to tap with box_2d in steps if visible). In Canada, CRA, Canada Post, Interac e-Transfer, banks and Service Canada never ask for payment or personal info by text with a link. Look-alike domains are scams. If it is a genuine message, say looks_safe and explain why.
+- scam_check: scam.verdict, scam.reasons (concrete clues you see: sender, link domain, urgency, typos, payment requests), scam.do_not, scam.how_to_close (safe ways to close or delete it, step 1 is the safe button to tap with box_2d in steps if visible). In Canada, CRA, Canada Post, Interac e-Transfer, banks and Service Canada never ask for payment or personal info by text with a link. Look-alike domains are scams. If it is a genuine message, say looks_safe and explain why. For a fake warning or pop-up inside a web browser, the safe way out is the browser's own close button (the X on the tab or at the top-right corner of the window), never a button, link or X drawn inside the pop-up itself: those can be fake and trigger the scam.
 - explain_it: explain.answer and explain.key_points.
 
 box_2d: [ymin, xmin, ymax, xmax] normalized to 0-1000 over the whole screenshot. Draw it tightly around the single element the user should tap for step 1 only. Leave box_2d empty for later steps whose element is not on this screenshot, and empty everywhere when there is no screenshot.
@@ -119,16 +128,15 @@ Follow-ups: if history is provided, the user did the previous step and sent a ne
 
 export const hasKey = () => apiKeys().length > 0;
 
-export async function askSid(req: SidRequest): Promise<SidResult> {
+function buildParts(req: SidRequest) {
   const parts: Array<Record<string, unknown>> = [];
   if (req.image) parts.push({ inlineData: { data: req.image.data, mimeType: req.image.mimeType } });
-
   const history = req.history.length
-    ? `Earlier in this conversation:\n${req.history
+    ? `Earlier in this conversation:
+${req.history
         .map((t, i) => `${i + 1}. User: ${t.question || "(screenshot)"} → Sid (${t.mode}): ${t.told_user}`)
         .join("\n")}\n\nThe user has now done that and sent the attached screenshot.`
     : "";
-
   parts.push({
     text: [
       `UI language: ${req.uiLanguage}`,
@@ -139,23 +147,31 @@ export async function askSid(req: SidRequest): Promise<SidResult> {
       .filter(Boolean)
       .join("\n\n"),
   });
+  return parts;
+}
 
-  // Hedged fallback: start the best model; if it fails, or hasn't answered after a few
-  // seconds (busy models can hang), start the next one too and take whichever answers first.
-  const hedgeMs = req.image ? 9_000 : 6_000;
-  const deadline = AbortSignal.timeout(55_000); // stay under Vercel's 60s limit
+export interface SidStream {
+  model: string;
+  /** The answer's JSON text, chunk by chunk, starting with the first chunk. */
+  chunks: AsyncGenerator<string>;
+}
+
+/**
+ * Starts Sid's answer as a stream. Models are raced for the FIRST chunk: the best model
+ * starts; if it fails, or has sent nothing after a few seconds, the next cheap model starts
+ * too, and whichever speaks first wins (the others are cancelled).
+ */
+export function streamSid(req: SidRequest, signal?: AbortSignal): Promise<SidStream> {
+  const parts = buildParts(req);
+  const hedgeMs = req.image ? 6_000 : 4_000;
+  const deadline = AbortSignal.any([AbortSignal.timeout(50_000), ...(signal ? [signal] : [])]);
   const errors: unknown[] = [];
   const ctrls: AbortController[] = [];
-  return new Promise<SidResult>((resolve, reject) => {
+  return new Promise<SidStream>((resolve, reject) => {
     let next = 0;
     let running = 0;
     let done = false;
     let hedge: ReturnType<typeof setTimeout> | undefined;
-    const finish = () => {
-      done = true;
-      clearTimeout(hedge);
-      ctrls.forEach((c) => c.abort());
-    };
     const launch = () => {
       clearTimeout(hedge);
       if (done || next >= MODELS.length || deadline.aborted) return;
@@ -163,12 +179,17 @@ export async function askSid(req: SidRequest): Promise<SidResult> {
       running++;
       const ctrl = new AbortController();
       ctrls.push(ctrl);
-      hedge = setTimeout(launch, hedgeMs);
-      tryModel(model, parts, AbortSignal.any([ctrl.signal, deadline])).then(
-        (r) => {
-          if (done) return;
-          finish();
-          resolve({ ...r, model });
+      if (next < MODELS.length && canHedge(MODELS[next])) hedge = setTimeout(launch, hedgeMs);
+      openModel(model, parts, AbortSignal.any([ctrl.signal, deadline])).then(
+        (chunks) => {
+          if (done) {
+            void chunks.return(undefined);
+            return;
+          }
+          done = true;
+          clearTimeout(hedge);
+          ctrls.forEach((c) => c !== ctrl && c.abort());
+          resolve({ model, chunks });
         },
         (err) => {
           running--;
@@ -176,7 +197,8 @@ export async function askSid(req: SidRequest): Promise<SidResult> {
           errors.push(err);
           if (next < MODELS.length && !deadline.aborted) launch();
           else if (running === 0) {
-            finish();
+            done = true;
+            clearTimeout(hedge);
             const kind = errors.every(isQuotaError)
               ? "quota"
               : errors.some(isTimeoutError)
@@ -193,12 +215,12 @@ export async function askSid(req: SidRequest): Promise<SidResult> {
   });
 }
 
-/** One model, trying the second key if the first is out of quota. */
-async function tryModel(model: string, parts: Array<Record<string, unknown>>, signal: AbortSignal): Promise<SidResult> {
+/** Opens one model's stream (second key if the first is out of quota) and waits for its first chunk. */
+async function openModel(model: string, parts: Array<Record<string, unknown>>, signal: AbortSignal): Promise<AsyncGenerator<string>> {
   let lastErr: unknown = new Error("No API key");
   for (const { index, key } of apiKeys()) {
     try {
-      const res = await clientFor(key).models.generateContent({
+      const stream = await clientFor(key).models.generateContentStream({
         model,
         contents: [{ role: "user", parts }],
         config: {
@@ -209,12 +231,20 @@ async function tryModel(model: string, parts: Array<Record<string, unknown>>, si
           abortSignal: signal,
         },
       });
-      const text = res.text;
-      if (!text) throw new Error("Empty response");
-      return normalize(JSON.parse(text));
+      // Wait for real text: errors (503/429) surface here, before we commit to this model
+      let first = "";
+      while (!first) {
+        const r = await stream.next();
+        if (r.done) throw new Error("Empty response");
+        first = r.value.text ?? "";
+      }
+      return (async function* () {
+        yield first;
+        for await (const c of stream) if (c.text) yield c.text;
+      })();
     } catch (err) {
       lastErr = err;
-      if (!signal.aborted || isTimeoutError(err)) console.warn(`[sid] ${model} (key ${index + 1}) failed:`, String(err).slice(0, 160));
+      if (!signal.aborted) console.warn(`[sid] ${model} (key ${index + 1}) failed:`, String(err).slice(0, 160));
       if (isQuotaError(err)) {
         markQuotaExceeded(index);
         continue; // the other key may still have quota
@@ -223,6 +253,14 @@ async function tryModel(model: string, parts: Array<Record<string, unknown>>, si
     }
   }
   throw lastErr;
+}
+
+/** Whole answer at once (used by scripts and fallbacks). */
+export async function askSid(req: SidRequest): Promise<SidResult> {
+  const { model, chunks } = await streamSid(req);
+  let text = "";
+  for await (const c of chunks) text += c;
+  return { ...normalize(JSON.parse(text)), model };
 }
 
 /** Defensive clean-up so the UI never crashes on a slightly-off response. */

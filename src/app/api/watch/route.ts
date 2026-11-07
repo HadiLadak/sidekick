@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 
 export const maxDuration = 20;
 
-const WATCH_MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
+// 3.1 first so the watchdog does not eat the daily quota of /api/sid's main model
+const WATCH_MODELS = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"];
 const hits = new Map<string, number[]>();
 
 /**

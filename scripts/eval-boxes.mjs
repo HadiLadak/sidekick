@@ -33,8 +33,29 @@ for (const c of cases) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ text: c.text, image: { data: buf.toString("base64"), mimeType: mime }, uiLanguage: "en", history: [] }),
   });
-  const json = await res.json();
+  // The route streams NDJSON: note when the title first shows, then take the final answer
+  let json = null;
+  let firstTitle = 0;
+  if ((res.headers.get("content-type") || "").includes("ndjson")) {
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf(String.fromCharCode(10))) >= 0) {
+        const ev = JSON.parse(buf.slice(0, nl));
+        buf = buf.slice(nl + 1);
+        if (ev.t === "partial" && ev.data?.title && !firstTitle) firstTitle = Date.now() - t0;
+        if (ev.t === "done") json = ev.result;
+        if (ev.t === "error") json = ev;
+      }
+    }
+  } else json = await res.json();
   const ms = Date.now() - t0;
+  console.log(`${c.id}: title shown after ${firstTitle}ms`);
   if (json.error) {
     console.log(`${c.id}: ERROR ${json.error} (${ms}ms)`);
     continue;

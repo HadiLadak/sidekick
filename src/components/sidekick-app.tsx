@@ -15,6 +15,7 @@ import { FamilySheet } from "./family-sheet";
 import { Header } from "./header";
 import { LivePreflight, LiveView } from "./live-view";
 import { ModeGuide } from "./mode-guide";
+import { PendingView, type PartialResult } from "./pending-view";
 import { ResultView } from "./result-view";
 import { Sid } from "./sid";
 import { TapSpot } from "./tap-spot";
@@ -61,6 +62,10 @@ export function SidekickApp() {
     }
   }
   const [lastRequest, setLastRequest] = useState<AskRequest | null>(null);
+  const [partial, setPartial] = useState<PartialResult | null>(null);
+  const [pendingText, setPendingText] = useState("");
+  const [answeredMs, setAnsweredMs] = useState<number | null>(null);
+  const askCtrl = useRef<AbortController | null>(null);
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -85,42 +90,75 @@ export function SidekickApp() {
   }
 
   async function ask(req: AskRequest) {
-      setLastRequest(req);
-      setStatus("loading");
-      setError(null);
-      setShownImage(req.image);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      try {
-        const res = await fetch("/api/sid", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            text: req.text,
-            image: req.image ? { data: req.image.data, mimeType: req.image.mimeType } : null,
-            uiLanguage: prefs.lang,
-            history: req.history,
-          }),
-        });
-        const body = await res.json().catch(() => null);
-        if (!res.ok || !body || "error" in body) {
-          // Demos still work without a connection: fall back to the saved answer.
-          if (req.demo?.cached) {
-            showResult(req.demo.cached, req);
-            return;
-          }
-          setError(body?.error ? body : { error: "model_failed", message: "Sid couldn't be reached. Check your internet and try again." });
-          setStatus("error");
-          return;
+    askCtrl.current?.abort();
+    const ctrl = new AbortController();
+    askCtrl.current = ctrl;
+    const t0 = performance.now();
+    setLastRequest(req);
+    setStatus("loading");
+    setError(null);
+    setPartial(null);
+    setAnsweredMs(null);
+    setPendingText(req.text);
+    setShownImage(req.image);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const fail = (err: SidError) => {
+      if (ctrl.signal.aborted) return;
+      // Demos still work without a connection: fall back to the saved answer.
+      if (req.demo?.cached) return showResult(req.demo.cached, req);
+      setError(err);
+      setStatus("error");
+    };
+    const offline = (): SidError => ({ error: "network", message: t.errors.network });
+
+    let res: Response;
+    try {
+      res = await fetch("/api/sid", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          text: req.text,
+          image: req.image ? { data: req.image.data, mimeType: req.image.mimeType } : null,
+          uiLanguage: prefs.lang,
+          history: req.history,
+        }),
+        signal: ctrl.signal,
+      });
+    } catch {
+      return fail(offline());
+    }
+
+    // Errors come back as plain JSON; answers stream as NDJSON (title and verdict first)
+    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("ndjson") || !res.body) {
+      const body = await res.json().catch(() => null);
+      return fail(body?.error ? body : { error: "model_failed", message: t.errors.model_failed });
+    }
+    try {
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line || ctrl.signal.aborted) continue;
+          const ev = JSON.parse(line);
+          if (ev.t === "partial") setPartial(ev.data);
+          else if (ev.t === "done") {
+            setAnsweredMs(performance.now() - t0);
+            return showResult(ev.result as SidResult, req);
+          } else if (ev.t === "error") return fail(ev);
         }
-        showResult(body as SidResult, req);
-      } catch {
-        if (req.demo?.cached) {
-          showResult(req.demo.cached, req);
-          return;
-        }
-        setError({ error: "model_failed", message: "Sid couldn't be reached. Check your internet and try again." });
-        setStatus("error");
       }
+      fail(offline()); // the stream ended without an answer
+    } catch {
+      fail(offline());
+    }
   }
 
   function submit(override?: { text?: string }) {
@@ -135,7 +173,7 @@ export function SidekickApp() {
       const img = await prepareImage(file);
       ask({ text: "", image: img, history });
     } catch {
-      setNotice("That picture couldn't be opened. Try a PNG or JPG screenshot.");
+      setNotice(t.errors.unsupported);
     }
   }
 
@@ -153,6 +191,7 @@ export function SidekickApp() {
       const req = { text: demo.prompt, image: img, history: [], demo };
       setLastRequest(req);
       setShownImage(img);
+      setAnsweredMs(null);
       showResult(demo.cached, req);
       window.scrollTo({ top: 0 });
       return;
@@ -161,6 +200,7 @@ export function SidekickApp() {
   }
 
   function startOver() {
+    askCtrl.current?.abort();
     stopSpeaking();
     setStatus("idle");
     setResult(null);
@@ -307,7 +347,7 @@ export function SidekickApp() {
           </>
         )}
 
-        {status === "loading" && <Thinking t={t} image={shownImage} />}
+        {status === "loading" && <PendingView t={t} text={pendingText} image={shownImage} partial={partial} />}
 
         {status === "live-pre" && (
           <LivePreflight
@@ -341,7 +381,7 @@ export function SidekickApp() {
           <section role="alert" className="flex flex-col items-center gap-4 py-8 text-center">
             <Sid mood="worried" className="size-28" />
             <h1 className="text-2xl font-bold text-ink">{t.errorTitle}</h1>
-            <p className="max-w-md text-lg text-ink-soft">{error.message}</p>
+            <p className="max-w-md text-lg text-ink-soft">{t.errors[error.error] ?? error.message}</p>
             <div className="flex flex-wrap justify-center gap-2">
               {error.error !== "bad_input" && lastRequest && (
                 <button
@@ -377,6 +417,9 @@ export function SidekickApp() {
             onAskFamily={() => setFamily(true)}
           />
         )}
+        {status === "result" && answeredMs !== null && (
+          <p className="text-center text-sm text-ink-soft">{t.answeredIn((answeredMs / 1000).toFixed(1))}</p>
+        )}
       </main>
 
       <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
@@ -409,33 +452,5 @@ export function SidekickApp() {
         />
       )}
     </>
-  );
-}
-
-function Thinking({ t, image }: { t: { thinking: string }; image: PreparedImage | null }) {
-  return (
-    <section className="flex flex-col items-center gap-5 py-6" aria-live="polite" aria-busy="true">
-      <div className="flex items-end gap-3">
-        <Sid mood="thinking" className="size-24" />
-        <p className="bubble flex items-center gap-2 bg-surface px-5 py-3 text-xl font-semibold text-ink ring-1 ring-line">
-          {t.thinking}
-          <span className="flex gap-1" aria-hidden="true">
-            <span className="dot size-2 rounded-full bg-ink" />
-            <span className="dot size-2 rounded-full bg-ink [animation-delay:.15s]" />
-            <span className="dot size-2 rounded-full bg-ink [animation-delay:.3s]" />
-          </span>
-        </p>
-      </div>
-      {image && (
-        <div className="relative overflow-hidden rounded-[1.25rem] border-4 border-ink">
-          {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
-          <img src={image.url} alt="" width={image.width} height={image.height} className="block h-auto max-h-[55vh] w-auto opacity-80" />
-          <span
-            className="absolute inset-x-0 h-1/4 bg-gradient-to-b from-transparent via-mark/50 to-transparent motion-safe:animate-[scan_1.6s_ease-in-out_infinite_alternate]"
-            aria-hidden="true"
-          />
-        </div>
-      )}
-    </section>
   );
 }

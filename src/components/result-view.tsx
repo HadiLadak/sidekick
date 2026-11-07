@@ -35,7 +35,7 @@ const MODE_STYLE: Record<Mode, { icon: typeof Pointer; chip: string }> = {
   explain_it: { icon: Lightbulb, chip: "bg-learn-bg text-learn" },
 };
 
-const VERDICT = {
+export const VERDICT = {
   scam: { icon: ShieldAlert, box: "bg-danger-bg text-danger ring-danger" },
   suspicious: { icon: ShieldQuestion, box: "bg-caution-bg text-caution ring-caution" },
   looks_safe: { icon: ShieldCheck, box: "bg-safe-bg text-safe ring-safe" },
@@ -281,7 +281,7 @@ export function ResultView({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"

@@ -38,11 +38,17 @@ export function Composer({
   }, [text]);
 
   async function takeFile(file: File | Blob | null | undefined) {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    // HEIC (iPhone photos) often arrives with an empty type on Windows: try it, explain if it fails
+    const name = "name" in file ? file.name : "";
+    if (!file.type.startsWith("image/") && !/\.(heic|heif|avif|bmp|tiff?)$/i.test(name)) {
+      onNotice(t.errors.unsupported);
+      return;
+    }
     try {
       setImage(await prepareImage(file));
     } catch {
-      onNotice("That picture couldn't be opened. Try a PNG or JPG screenshot.");
+      onNotice(t.errors.unsupported);
     }
   }
 
@@ -123,7 +129,7 @@ export function Composer({
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"
