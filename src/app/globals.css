@@ -146,6 +146,10 @@
 html[data-simple="true"] {
   font-size: 125%;
 }
+/* Keep the header controls normal-sized in Simple mode so they fit on one row */
+html[data-simple="true"] .site-header {
+  zoom: 0.8;
+}
 
 @layer base {
   * {

@@ -21,7 +21,7 @@ export function Header({
   wide?: boolean;
 }) {
   return (
-    <header className={`mx-auto flex w-full ${wide ? "max-w-6xl" : "max-w-3xl"} flex-wrap items-center gap-1.5 px-3 pt-4 pb-2 sm:px-6`}>
+    <header className={`site-header mx-auto flex w-full ${wide ? "max-w-6xl" : "max-w-3xl"} flex-wrap items-center gap-1.5 px-3 pt-4 pb-2 sm:px-6`}>
       <button
         type="button"
         onClick={onHome}
