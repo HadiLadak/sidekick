@@ -16,7 +16,7 @@ const rate = raw.readUInt32LE(24);
 const dataAt = raw.indexOf("data") + 8;
 const pcm = raw.subarray(dataAt);
 const pad = (s) => Buffer.alloc(Math.round(rate * s) * 2);
-const body = Buffer.concat([pad(5), pcm, pad(30)]);
+const body = Buffer.concat([pad(Number(process.env.LEAD || 5)), pcm, pad(30)]);
 const h = Buffer.alloc(44); // canonical PCM WAV header
 h.write("RIFF", 0);
 h.writeUInt32LE(36 + body.length, 4);
@@ -42,6 +42,8 @@ const browser = await chromium.launch({
     `--use-file-for-fake-audio-capture=${padded}%noloop`,
     `--auto-select-tab-capture-source-by-title=${title}`,
     "--autoplay-policy=no-user-gesture-required",
+    // FAKE_CAM=<file.y4m|.mjpeg> makes the "camera" show that picture (e.g. a phone held up)
+    ...(process.env.FAKE_CAM ? [`--use-file-for-fake-video-capture=${process.env.FAKE_CAM}`] : []),
   ],
 });
 const ctx = await browser.newContext({ viewport: { width: Number(process.env.VW || 430), height: Number(process.env.VH || 900) }, permissions: ["microphone", "camera"] });
@@ -58,9 +60,20 @@ await app.getByRole("button", { name: /start talking/i }).click();
 if (process.env.NOPIP) {
   await app.getByRole("button", { name: /bring sid back/i }).click({ timeout: 8000 }).catch(() => {});
 }
+// SWITCH=1: as soon as Sid is live, press "Show Sid your phone" (screen -> camera in the same session)
+if (process.env.SWITCH) {
+  const b = app.getByRole("button", { name: /show sid your phone/i });
+  await b.waitFor({ timeout: 30000 });
+  await b.click();
+  logs.push(`--- switched to camera`);
+}
 const t0 = Date.now();
 for (let i = 1; i <= 9; i++) {
   await app.waitForTimeout(3000);
+  if (process.env.BACK_AT && i === Number(process.env.BACK_AT)) {
+    await app.getByRole("button", { name: /back to my screen/i }).click();
+    logs.push(`--- switched back to screen`);
+  }
   await app.screenshot({ path: path.join(outDir, `live-${i}.png`) });
   const text = await app.locator("main").innerText();
   const dbg = await app.evaluate(() => JSON.stringify(window.__sidDebug));

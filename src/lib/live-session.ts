@@ -13,6 +13,7 @@ export interface Frame {
 
 export type LiveEvent =
   | { type: "status"; status: "connecting" | "live" | "ended" }
+  | { type: "source"; source: LiveSource }
   | { type: "frame"; frame: Frame }
   | { type: "sid-caption"; text: string; final: boolean }
   | { type: "user-caption"; text: string; final: boolean }
@@ -72,6 +73,10 @@ export class LiveSid {
   private session: Session | null = null;
   private mic: MediaStream | null = null;
   private video: MediaStream | null = null;
+  /** The other stream, kept open so switching back is instant (e.g. the screen while showing the camera). */
+  private parked: { source: LiveSource; stream: MediaStream } | null = null;
+  private current: LiveSource = "screen";
+  private switching = false;
   private inCtx: AudioContext | null = null;
   private outCtx: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
@@ -133,7 +138,8 @@ export class LiveSid {
         this.opts.source === "screen"
           ? await this.screenStream()
           : await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-      this.video.getVideoTracks()[0]?.addEventListener("ended", () => this.stop());
+      this.current = this.opts.source;
+      this.watchEnded(this.video, this.opts.source);
       this.mic = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
       });
@@ -438,6 +444,96 @@ export class LiveSid {
     } catch {}
   }
 
+  /** If the user ends a share from the browser's own bar, stop (or fall back to the other source). */
+  private watchEnded(stream: MediaStream, source: LiveSource) {
+    stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+      if (this.stopped || this.switching) return;
+      if (this.current !== source) {
+        if (this.parked?.stream === stream) this.parked = null;
+        return;
+      }
+      if (this.parked) void this.switchSource(this.parked.source);
+      else this.stop();
+    });
+  }
+
+  private cameraStream() {
+    return navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
+  }
+
+  get source() {
+    return this.current;
+  }
+
+  /**
+   * Swap what Sid sees, in the same session: screen share <-> camera (e.g. "Show Sid your phone").
+   * Call from a click. The screen share stays open in the background so going back is instant;
+   * the camera is turned off whenever it isn't being shown.
+   */
+  async switchSource(to: LiveSource) {
+    if (this.stopped || this.switching || to === this.current || !this.videoEl) return;
+    this.switching = true;
+    const from = this.current;
+    try {
+      const next =
+        this.parked?.source === to && this.parked.stream.getVideoTracks()[0]?.readyState === "live"
+          ? this.parked.stream
+          : to === "camera"
+            ? await this.cameraStream()
+            : await this.screenStream();
+      if (this.stopped) {
+        next.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      if (next !== this.parked?.stream) this.watchEnded(next, to);
+      const prev = this.video;
+      // Keep the screen share alive for later; never leave the camera on in the background
+      if (prev && from === "screen") this.parked = { source: "screen", stream: prev };
+      else {
+        prev?.getTracks().forEach((t) => t.stop());
+        this.parked = null;
+      }
+      if (this.parked?.stream === next) this.parked = null;
+      this.video = next;
+      this.current = to;
+      this.videoEl.srcObject = next;
+      await this.videoEl.play().catch(() => {});
+      this.lastThumb = null;
+      this.settledSent = true;
+      this.flushAudio();
+      this.opts.onEvent({ type: "source", source: to });
+      // Give the new picture a moment to arrive before Sid looks
+      await new Promise((r) => setTimeout(r, 900));
+      if (this.stopped) return;
+      this.sendFrame(true);
+      this.session?.sendRealtimeInput({
+        text:
+          to === "camera"
+            ? "[The user switched the video to their laptop camera to show you something, usually their phone. From now on the frames are a camera view, not their computer screen. Highlight boxes refer to the camera picture. Do not guess their task from what is on the phone and do not give a step yet: if they already asked something, keep helping with that; otherwise say in one short sentence that you can see it and ask what they need.]"
+            : "[The user switched back to sharing their computer screen. The frames are their screen again. Keep helping with what they already asked, one short step at a time. Do not start a new task based on what is on the screen; if they have not asked anything, just ask what they need.]",
+      });
+    } catch (err) {
+      const denied = (err as Error)?.name === "NotAllowedError";
+      this.opts.onEvent({
+        type: "error",
+        fatal: false,
+        frame: this.latest,
+        message: denied
+          ? to === "camera"
+            ? "The camera was blocked. Allow it in the address bar to show Sid your phone."
+            : "Screen sharing was blocked."
+          : to === "camera"
+            ? "Sid couldn't find a camera on this computer."
+            : "Screen sharing couldn't start.",
+      });
+    } finally {
+      this.switching = false;
+    }
+  }
+
   /** Send a typed message (for accessibility, or when the mic is muted). */
   say(text: string) {
     this.session?.sendRealtimeInput({ text });
@@ -453,6 +549,8 @@ export class LiveSid {
     } catch {}
     this.session = null;
     this.video?.getTracks().forEach((t) => t.stop());
+    this.parked?.stream.getTracks().forEach((t) => t.stop());
+    this.parked = null;
     this.mic?.getTracks().forEach((t) => t.stop());
     this.inCtx?.close().catch(() => {});
     this.outCtx?.close().catch(() => {});

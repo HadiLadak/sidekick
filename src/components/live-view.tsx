@@ -9,6 +9,7 @@ import {
   Mic,
   MicOff,
   Monitor,
+  Smartphone,
   PictureInPicture2,
   ShieldAlert,
   Square,
@@ -154,6 +155,9 @@ export function LiveView({
   const [steps, setSteps] = useState<{ text: string; done: boolean }[]>([]);
   const [muted, setMuted] = useState(false);
   const [pip, setPip] = useState<Window | null>(null);
+  const [current, setCurrent] = useState<LiveSource>(source);
+  const [switching, setSwitching] = useState(false);
+  const [notice, setNotice] = useState("");
   const lastQuestion = useRef("");
   const autoFloat = useRef<(() => void) | null>(null);
   const cb = useRef({ onFail, onAskFamily, onCelebrate, onEnd });
@@ -172,6 +176,11 @@ export function LiveView({
             setStatus(e.status);
             if (e.status === "live" && source === "screen") autoFloat.current?.();
             if (e.status === "ended") cb.current.onEnd();
+            break;
+          case "source":
+            setCurrent(e.source);
+            setHl(null);
+            setNotice("");
             break;
           case "frame":
             setFrame(e.frame);
@@ -217,7 +226,9 @@ export function LiveView({
             cb.current.onAskFamily(e.summary, sidRef.current?.latestFrame ?? null);
             break;
           case "error":
-            cb.current.onFail(e.message, e.frame, lastQuestion.current);
+            // Non-fatal (e.g. the camera was blocked when switching): keep the session, say what happened
+            if (!e.fatal) setNotice(e.message);
+            else cb.current.onFail(e.message, e.frame, lastQuestion.current);
             break;
         }
       },
@@ -306,8 +317,20 @@ export function LiveView({
     if (sidRef.current) sidRef.current.muted = m;
   }
 
+  async function switchTo(to: LiveSource) {
+    const live = sidRef.current;
+    if (!live) return;
+    setSwitching(true);
+    setNotice("");
+    await live.switchSource(to);
+    setSwitching(false);
+    // Show the failure in the user's language rather than the session's English message
+    setNotice((n) => (n ? (to === "camera" ? c.cameraFailed : c.screenFailed) : ""));
+  }
+
   const shown = hl?.frame ?? frame;
-  const where = source === "screen" ? c.seesScreen : c.seesCamera;
+  const where = current === "screen" ? c.seesScreen : c.seesCamera;
+  const canSwitch = status === "live" && (current === "screen" || screenShareSupported());
 
   const panel = (
     <div
@@ -418,7 +441,36 @@ export function LiveView({
         </ol>
       )}
 
+      {current === "camera" && status === "live" && (
+        <p className="flex items-center gap-2 text-lg text-ink-soft lg:col-start-2" dir="auto">
+          <Smartphone className="size-5 shrink-0" aria-hidden="true" />
+          {c.phoneHint}
+        </p>
+      )}
+
+      {notice && (
+        <p role="alert" className="rounded-2xl bg-caution-bg p-3 text-lg font-semibold text-caution ring-1 ring-caution lg:col-start-2" dir="auto">
+          {notice}
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2 lg:col-start-2">
+        {canSwitch && (
+          <button
+            type="button"
+            onClick={() => switchTo(current === "screen" ? "camera" : "screen")}
+            disabled={switching}
+            aria-busy={switching}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-surface px-5 text-lg font-bold text-ink ring-2 ring-ink disabled:opacity-60"
+          >
+            {current === "screen" ? (
+              <Smartphone className="size-5" aria-hidden="true" />
+            ) : (
+              <Monitor className="size-5" aria-hidden="true" />
+            )}
+            {current === "screen" ? c.showPhone : source === "screen" ? c.backToScreen : c.showScreen}
+          </button>
+        )}
         <button
           type="button"
           onClick={toggleMute}

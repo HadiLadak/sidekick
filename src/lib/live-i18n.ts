@@ -38,6 +38,12 @@ const en = {
   inFloating: "Sid is in the floating window.",
   bringBack: "Bring Sid back",
   failed: "Live help stopped, so Sid switched to screenshot help.",
+  showPhone: "Show Sid your phone",
+  backToScreen: "Back to my screen",
+  showScreen: "Show Sid my screen",
+  phoneHint: "Hold your phone up to the laptop camera, screen facing it.",
+  cameraFailed: "Sid couldn't use the camera. Allow it in the address bar, then try again.",
+  screenFailed: "Screen sharing didn't start. Try again and pick a screen to share.",
 };
 
 export type LiveCopy = typeof en;
@@ -81,6 +87,12 @@ const fr: LiveCopy = {
   inFloating: "Sid est dans la fenêtre flottante.",
   bringBack: "Ramener Sid",
   failed: "L'aide en direct s'est arrêtée; Sid passe à l'aide par capture.",
+  showPhone: "Montrer mon téléphone à Sid",
+  backToScreen: "Revenir à mon écran",
+  showScreen: "Montrer mon écran à Sid",
+  phoneHint: "Tenez votre téléphone devant la caméra de l'ordinateur, écran vers elle.",
+  cameraFailed: "Sid n'a pas pu utiliser la caméra. Autorisez-la dans la barre d'adresse, puis réessayez.",
+  screenFailed: "Le partage d'écran n'a pas démarré. Réessayez et choisissez un écran.",
 };
 
 const es: LiveCopy = {
@@ -122,6 +134,12 @@ const es: LiveCopy = {
   inFloating: "Sid está en la ventana flotante.",
   bringBack: "Traer a Sid",
   failed: "La ayuda en vivo se detuvo; Sid cambió a ayuda con captura.",
+  showPhone: "Mostrarle mi teléfono a Sid",
+  backToScreen: "Volver a mi pantalla",
+  showScreen: "Mostrarle mi pantalla a Sid",
+  phoneHint: "Sostén el teléfono frente a la cámara de la laptop, con la pantalla hacia ella.",
+  cameraFailed: "Sid no pudo usar la cámara. Permítela en la barra de direcciones y vuelve a intentarlo.",
+  screenFailed: "No se pudo compartir la pantalla. Inténtalo de nuevo y elige una pantalla.",
 };
 
 const ur: LiveCopy = {
@@ -163,6 +181,12 @@ const ur: LiveCopy = {
   inFloating: "سِڈ تیرتی ونڈو میں ہے۔",
   bringBack: "سِڈ کو واپس لائیں",
   failed: "لائیو مدد رک گئی، اس لیے سِڈ اسکرین شاٹ مدد پر آ گیا۔",
+  showPhone: "سِڈ کو اپنا فون دکھائیں",
+  backToScreen: "واپس میری اسکرین",
+  showScreen: "سِڈ کو میری اسکرین دکھائیں",
+  phoneHint: "فون کو لیپ ٹاپ کے کیمرے کے سامنے رکھیں، اسکرین کیمرے کی طرف۔",
+  cameraFailed: "سِڈ کیمرا استعمال نہیں کر سکا۔ ایڈریس بار میں اجازت دیں، پھر دوبارہ کوشش کریں۔",
+  screenFailed: "اسکرین شیئرنگ شروع نہیں ہوئی۔ دوبارہ کوشش کریں اور کوئی اسکرین چنیں۔",
 };
 
 const ar: LiveCopy = {
@@ -204,6 +228,12 @@ const ar: LiveCopy = {
   inFloating: "سِد في النافذة العائمة.",
   bringBack: "أعد سِد",
   failed: "توقفت المساعدة المباشرة، فانتقل سِد إلى المساعدة بلقطة الشاشة.",
+  showPhone: "أرِ سِد هاتفك",
+  backToScreen: "العودة إلى شاشتي",
+  showScreen: "أرِ سِد شاشتي",
+  phoneHint: "أمسك هاتفك أمام كاميرا الحاسوب، والشاشة باتجاهها.",
+  cameraFailed: "لم يتمكن سِد من استخدام الكاميرا. اسمح بها من شريط العنوان ثم حاول مجددًا.",
+  screenFailed: "لم تبدأ مشاركة الشاشة. حاول مجددًا واختر شاشة.",
 };
 
 export const LIVE_STRINGS: Record<Lang, LiveCopy> = { en, fr, es, ur, ar };
