@@ -66,7 +66,7 @@ export function speechFor(r: SidResult, step: number, t: Strings) {
     parts.push(r.explain.answer, ...r.explain.key_points);
   }
   const s = r.steps[step];
-  if (s && r.mode !== "scam_check") parts.push(t.step(step + 1, r.steps.length) + ". " + s.instruction + ". " + s.detail);
+  if (s) parts.push(t.step(step + 1, r.steps.length) + ". " + s.instruction + ". " + s.detail);
   if (r.next_hint) parts.push(r.next_hint);
   return parts.filter(Boolean).join(" ");
 }
@@ -128,8 +128,8 @@ export function ResultView({
     }
   }
 
-  const showSteps = r.mode !== "scam_check" && r.steps.length > 0;
-  const tapBox = r.mode === "scam_check" ? r.steps[0]?.box_2d : step === 0 ? current?.box_2d : undefined;
+  const showSteps = r.steps.length > 0;
+  const tapBox = step === 0 ? current?.box_2d : undefined;
 
   return (
     <article className="flex flex-col gap-5" aria-busy={busy}>

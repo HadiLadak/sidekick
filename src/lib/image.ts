@@ -50,11 +50,15 @@ export interface PixelBox {
 
 /** Gemini box_2d is [ymin, xmin, ymax, xmax] normalized to 0–1000. Convert to image pixels. */
 export function boxToPixels(box: number[], width: number, height: number): PixelBox | null {
-  if (!box || box.length !== 4) return null;
+  if (!box || box.length !== 4 || !box.every(Number.isFinite) || width <= 0 || height <= 0) return null;
   let [ymin, xmin, ymax, xmax] = box;
   if (ymin > ymax) [ymin, ymax] = [ymax, ymin];
   if (xmin > xmax) [xmin, xmax] = [xmax, xmin];
-  if (ymax - ymin < 1 && xmax - xmin < 1) return null;
+  ymin = Math.max(0, Math.min(1000, ymin));
+  ymax = Math.max(0, Math.min(1000, ymax));
+  xmin = Math.max(0, Math.min(1000, xmin));
+  xmax = Math.max(0, Math.min(1000, xmax));
+  if (ymax - ymin < 1 || xmax - xmin < 1) return null;
   const x = (xmin / 1000) * width;
   const y = (ymin / 1000) * height;
   const w = ((xmax - xmin) / 1000) * width;

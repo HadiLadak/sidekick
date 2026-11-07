@@ -35,6 +35,14 @@ export async function POST(request: Request) {
   } catch {
     return fail(400, { error: "bad_input", message: "That request couldn't be read. Try again." }, started);
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return fail(400, { error: "bad_input", message: "That request couldn't be read. Try again." }, started);
+  }
+  const history = Array.isArray(body.history)
+    ? body.history.filter((turn) => turn && typeof turn === "object" &&
+        typeof turn.question === "string" && typeof turn.told_user === "string" &&
+        typeof turn.title === "string" && ["show_me", "fix_it", "scam_check", "explain_it"].includes(turn.mode))
+    : [];
 
   const text = typeof body.text === "string" ? body.text.slice(0, 4000) : "";
   const image =
@@ -52,7 +60,10 @@ export async function POST(request: Request) {
     image,
     device: image && (body.device === "phone" || body.device === "computer") ? body.device : undefined,
     uiLanguage: typeof body.uiLanguage === "string" ? body.uiLanguage.slice(0, 10) : "en",
-    history: Array.isArray(body.history) ? body.history.slice(-6) : [],
+    history: (history.length > 6 ? [history[0], ...history.slice(-5)] : history).map((turn) => ({
+      question: turn.question.slice(0, 4000), mode: turn.mode,
+      title: turn.title.slice(0, 500), told_user: turn.told_user.slice(0, 4000),
+    })),
   };
 
   // Automated tests replay saved answers instead of calling Gemini (never in production)

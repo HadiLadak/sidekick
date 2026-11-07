@@ -36,6 +36,15 @@ export function Composer({
   useEffect(() => {
     textRef.current = text;
   }, [text]);
+  useEffect(() => () => {
+    const rec = recRef.current;
+    if (rec) {
+      rec.onend = null;
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.stop();
+    }
+  }, []);
 
   async function takeFile(file: File | Blob | null | undefined) {
     if (!file) return;

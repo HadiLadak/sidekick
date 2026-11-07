@@ -8,6 +8,7 @@ const nastaliq = Noto_Nastaliq_Urdu({ variable: "--font-nastaliq", subsets: ["ar
 const naskh = Noto_Naskh_Arabic({ variable: "--font-naskh", subsets: ["arabic"], preload: false });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://sidekick-eosin-seven.vercel.app"),
   title: "Sid, your tech sidekick",
   description:
     "Send Sid a screenshot or ask a question. Sid shows you exactly where to tap, fixes errors, spots scams and explains tech in plain words, in your language.",
