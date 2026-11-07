@@ -1,6 +1,6 @@
 "use client";
 
-import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
+import { FunctionResponseScheduling, GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import { cleanCaption } from "./caption";
 
 export type LiveSource = "screen" | "camera";
@@ -360,6 +360,7 @@ export class LiveSid {
     const ru = m.sessionResumptionUpdate;
     if (ru?.resumable && ru.newHandle) this.resumeHandle = ru.newHandle;
     const sc = m.serverContent;
+    if (sc?.modelTurn || sc?.outputTranscription || m.toolCall) this.modelBusy = true;
     if (sc?.interrupted) this.flushAudio();
     for (const p of sc?.modelTurn?.parts ?? []) {
       if (p.inlineData?.data && p.inlineData.mimeType?.startsWith("audio/")) this.play(p.inlineData.data);
@@ -370,6 +371,7 @@ export class LiveSid {
       if (shown) emit({ type: "sid-caption", text: shown, final: false });
     }
     if (sc?.inputTranscription?.text) {
+      this.modelBusy = true;
       this.taskStarted = true;
       this.userText += sc.inputTranscription.text;
       emit({ type: "user-caption", text: this.userText.trim(), final: false });
@@ -420,6 +422,7 @@ export class LiveSid {
         functionResponses: m.toolCall.functionCalls.map((f) => ({
           id: f.id,
           name: f.name,
+          scheduling: FunctionResponseScheduling.SILENT,
           response: { result: "shown on the user's screen" },
         })),
       });
@@ -449,6 +452,7 @@ export class LiveSid {
       this.sources.delete(src);
       if (this.sources.size === 0 && this.speaking) {
         this.speaking = false;
+        this.lastProgressCheck = Date.now();
         this.opts.onEvent({ type: "speaking", speaking: false });
       }
     };
@@ -533,16 +537,16 @@ export class LiveSid {
       this.progressQueued = true;
       void this.onSettled(frame);
     }
-    // Keep a deferred check while Sid speaks. Periodic checks also catch subtle changes.
-    if (this.modelBusy && now - this.lastProgressCheck >= 20000) this.modelBusy = false;
+    // Check only after a screen change, and never interrupt generation or queued audio.
+    // An unchanged screen means the user is still working, not a request to speak again.
     if (this.stepPending && this.muted && !this.speaking && !this.modelBusy &&
         now - this.lastProgressCheck >= 8000 &&
-        (this.progressQueued || now - this.lastProgressCheck >= 12000) && this.session) {
+        this.progressQueued && this.session) {
       // Send the exact current picture before asking the model to inspect it.
       this.session.sendRealtimeInput({ video: { data: frame.data, mimeType: "image/jpeg" } });
       this.sentFrame = frame;
       this.session.sendClientContent({ turns: [{ role: "user", parts: [{ text:
-        `[Automatic screen progress check. Previous instruction: ${this.lastInstruction.slice(0, 700)}. Inspect the attached latest screen. If it visibly shows the expected result, call step_done and give the next single step with highlight. An already-open menu must not be opened again. Video motion alone is not progress. If unchanged or uncertain, stay silent; do not repeat the instruction or ask the user to say done.]`,
+        `[Automatic screen progress check. Previous instruction: ${this.lastInstruction.slice(0, 700)}. Inspect the attached latest screen. If it visibly shows the expected result, call step_done and give the next single step with highlight. An already-open menu must not be opened again. Video motion alone is not progress. If unchanged or uncertain, produce no speech at all. Do not say you are waiting, acknowledge this check, repeat the instruction, or ask the user to say done.]`,
       }] }], turnComplete: true });
       this.modelBusy = true;
       this.progressQueued = false;

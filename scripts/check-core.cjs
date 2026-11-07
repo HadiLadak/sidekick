@@ -18,3 +18,21 @@ const json = JSON.stringify(answer);
 for (let i = 0; i <= json.length; i++) assert.doesNotThrow(() => parsePartialJson(json.slice(0, i)));
 assert.deepEqual(parsePartialJson(json), answer);
 console.log("PASS streaming JSON across every character boundary");
+
+// A gap between streamed audio chunks is not the end of Sid's response.
+const { LiveSid } = require("../src/lib/live-session.ts");
+const sid = new LiveSid({ source: "screen", lang: "en", onEvent() {} });
+let toolResponse;
+sid.session = { sendToolResponse(value) { toolResponse = value; } };
+sid.onMessage({ serverContent: { inputTranscription: { text: "Help me open settings" } } });
+assert.equal(sid.modelBusy, true);
+sid.onMessage({ serverContent: { turnComplete: true } });
+assert.equal(sid.modelBusy, false);
+sid.onMessage({ serverContent: { modelTurn: { parts: [] } } });
+assert.equal(sid.modelBusy, true);
+sid.onMessage({ toolCall: { functionCalls: [{ id: "highlight-1", name: "highlight", args: { instruction: "Open Settings" } }] } });
+assert.equal(toolResponse.functionResponses[0].scheduling, "SILENT");
+assert.equal(sid.modelBusy, true);
+sid.onMessage({ serverContent: { turnComplete: true } });
+assert.equal(sid.modelBusy, false);
+console.log("PASS live turn stays busy until completion and tool acknowledgments stay silent");
