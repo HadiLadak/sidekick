@@ -155,6 +155,7 @@ export function LiveView({
   const [muted, setMuted] = useState(false);
   const [pip, setPip] = useState<Window | null>(null);
   const lastQuestion = useRef("");
+  const autoFloat = useRef<(() => void) | null>(null);
   const cb = useRef({ onFail, onAskFamily, onCelebrate, onEnd });
   useEffect(() => {
     cb.current = { onFail, onAskFamily, onCelebrate, onEnd };
@@ -169,6 +170,7 @@ export function LiveView({
         switch (e.type) {
           case "status":
             setStatus(e.status);
+            if (e.status === "live" && source === "screen") autoFloat.current?.();
             if (e.status === "ended") cb.current.onEnd();
             break;
           case "frame":
@@ -183,6 +185,10 @@ export function LiveView({
             break;
           case "speaking":
             setSpeaking(e.speaking);
+            break;
+          case "turn-end":
+            // Sid answered without pointing at anything: drop the old ring so it can't contradict him
+            if (e.spoke && !e.highlighted) setHl(null);
             break;
           case "highlight":
             setHl({ box: e.box, label: e.label, instruction: e.instruction, frame: e.frame });
@@ -284,6 +290,12 @@ export function LiveView({
     }
   }
 
+  useEffect(() => {
+    autoFloat.current = () => {
+      if (docPiP() && !pip) popOut();
+    };
+  });
+
   function stop() {
     sidRef.current?.stop();
   }
@@ -298,9 +310,14 @@ export function LiveView({
   const where = source === "screen" ? c.seesScreen : c.seesCamera;
 
   const panel = (
-    <div className={cn("flex flex-col gap-3", pip && "min-h-dvh p-3")}>
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        pip ? "min-h-dvh p-3" : "lg:grid lg:grid-flow-dense lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-x-8",
+      )}
+    >
       {/* Always-visible privacy indicator + one-tap stop */}
-      <div className="flex items-center gap-2 rounded-full bg-danger-bg py-1.5 ps-4 pe-1.5 text-danger" role="status">
+      <div className="flex items-center gap-2 rounded-full bg-danger-bg py-1.5 ps-4 pe-1.5 text-danger lg:col-span-2" role="status">
         <span className="relative flex size-3" aria-hidden="true">
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-danger opacity-60" />
           <span className="relative inline-flex size-3 rounded-full bg-danger" />
@@ -317,7 +334,7 @@ export function LiveView({
       </div>
 
       {/* Sid + live captions */}
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 lg:col-start-2">
         <div ref={mouthRef} className={cn("shrink-0", speaking && "sid-talking")}>
           <Sid mood={scam ? "worried" : status === "connecting" ? "thinking" : "helping"} className={pip ? "size-16" : "size-20"} />
         </div>
@@ -337,7 +354,7 @@ export function LiveView({
         <div
           role="alert"
           className={cn(
-            "pop-in flex items-start gap-3 rounded-2xl p-4 ring-2",
+            "pop-in flex items-start gap-3 rounded-2xl p-4 ring-2 lg:col-start-2",
             scam.severity === "scam" ? "bg-danger-bg text-danger ring-danger" : "bg-caution-bg text-caution ring-caution",
           )}
         >
@@ -358,7 +375,7 @@ export function LiveView({
       )}
 
       {hl?.instruction && (
-        <p className={cn("leading-tight font-bold text-ink", pip ? "text-2xl" : "text-3xl")} lang={lang} dir="auto">
+        <p className={cn("leading-tight font-bold text-ink lg:col-start-2", pip ? "text-2xl" : "text-3xl")} lang={lang} dir="auto">
           <span className="marked">{hl.instruction}</span>
         </p>
       )}
@@ -372,16 +389,16 @@ export function LiveView({
           box={hl?.box}
           label={hl?.label || c.tapHere}
           alt={hl?.instruction || where}
-          className={pip ? "[&_img]:max-h-[38vh]" : "[&_img]:max-h-[50vh]"}
+          className={pip ? "[&_img]:max-h-[38vh]" : "[&_img]:max-h-[50vh] lg:col-start-1 lg:row-span-6 lg:row-start-2 lg:[&_img]:max-h-[72vh]"}
         />
       ) : (
-        <div className="grid aspect-video place-items-center rounded-[1.25rem] border-4 border-dashed border-line text-ink-soft">
+        <div className="grid aspect-video place-items-center rounded-[1.25rem] border-4 border-dashed border-line text-ink-soft lg:col-start-1 lg:row-span-6 lg:row-start-2">
           {c.waitingForScreen}
         </div>
       )}
 
       {steps.length > 0 && (
-        <ol className="flex flex-col gap-1.5" aria-label={c.progress}>
+        <ol className="flex flex-col gap-1.5 lg:col-start-2" aria-label={c.progress}>
           {steps.map((s, i) => (
             <li key={i} className={cn("flex items-center gap-2 text-base", s.done ? "text-ink-soft" : "font-semibold text-ink")} dir="auto">
               <span
@@ -400,7 +417,7 @@ export function LiveView({
         </ol>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 lg:col-start-2">
         <button
           type="button"
           onClick={toggleMute}

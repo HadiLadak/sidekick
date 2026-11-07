@@ -17,6 +17,7 @@ import { LivePreflight, LiveView } from "./live-view";
 import { ModeGuide } from "./mode-guide";
 import { ResultView } from "./result-view";
 import { Sid } from "./sid";
+import { cn } from "@/lib/utils";
 
 type Status = "idle" | "loading" | "result" | "error" | "live-pre" | "live";
 type AskRequest = { text: string; image: PreparedImage | null; history: Turn[]; demo?: Demo };
@@ -179,9 +180,16 @@ export function SidekickApp() {
       >
         Skip to content
       </a>
-      <Header prefs={prefs} update={update} isDark={isDark} t={t} onHome={startOver} />
+      <Header prefs={prefs} update={update} isDark={isDark} t={t} onHome={startOver} wide={status === "live"} />
 
-      <main id="main" ref={mainRef} className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 pt-4 pb-16 sm:px-6">
+      <main
+        id="main"
+        ref={mainRef}
+        className={cn(
+          "mx-auto flex w-full flex-1 flex-col gap-6 px-4 pt-4 pb-16 sm:px-6",
+          status === "live" ? "max-w-6xl" : "max-w-3xl",
+        )}
+      >
         {status === "idle" && (
           <>
             <section className="flex items-end gap-3 sm:gap-4" aria-labelledby="hello">

@@ -44,7 +44,7 @@ const browser = await chromium.launch({
     "--autoplay-policy=no-user-gesture-required",
   ],
 });
-const ctx = await browser.newContext({ viewport: { width: 430, height: 900 }, permissions: ["microphone", "camera"] });
+const ctx = await browser.newContext({ viewport: { width: Number(process.env.VW || 430), height: Number(process.env.VH || 900) }, permissions: ["microphone", "camera"] });
 const shared = await ctx.newPage();
 await shared.goto(sharedUrl);
 const app = await ctx.newPage();
@@ -53,8 +53,11 @@ app.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
 app.on("pageerror", (e) => logs.push(`[pageerror] ${e.message}`));
 app.on("websocket", (ws) => logs.push(`[ws] open ${ws.url().slice(0, 90)}`));
 await app.goto(appUrl + (process.env.TEST_SCREEN ? `?testScreen=${process.env.TEST_SCREEN}` : ""));
-await app.getByRole("button", { name: /get help live/i }).first().click();
+await app.getByRole("button", { name: /start live help/i }).first().click();
 await app.getByRole("button", { name: /start talking/i }).click();
+if (process.env.NOPIP) {
+  await app.getByRole("button", { name: /bring sid back/i }).click({ timeout: 8000 }).catch(() => {});
+}
 const t0 = Date.now();
 for (let i = 1; i <= 9; i++) {
   await app.waitForTimeout(3000);

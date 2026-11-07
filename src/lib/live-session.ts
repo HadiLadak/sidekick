@@ -17,6 +17,7 @@ export type LiveEvent =
   | { type: "sid-caption"; text: string; final: boolean }
   | { type: "user-caption"; text: string; final: boolean }
   | { type: "speaking"; speaking: boolean }
+  | { type: "turn-end"; highlighted: boolean; spoke: boolean }
   | { type: "highlight"; box: number[]; label: string; instruction: string; frame: Frame | null }
   | { type: "scam"; reason: string; severity: "scam" | "suspicious" }
   | { type: "step-done"; step: string; allDone: boolean }
@@ -89,6 +90,7 @@ export class LiveSid {
   private userText = "";
   private speaking = false;
   private stepPending = false;
+  private highlightedThisTurn = false;
   private stopped = false;
   private connected = false;
   muted = false;
@@ -175,7 +177,7 @@ export class LiveSid {
       await new Promise((r) => setTimeout(r, 1300));
       if (this.stopped) return;
       this.session?.sendRealtimeInput({
-        text: "[The user just started live help and is sharing their " + (this.opts.source === "screen" ? "screen" : "camera") + ". Look at it. If you see a scam, call scam_alert and warn them. Otherwise greet them in one short sentence.]",
+        text: "[The user just started live help and is sharing their " + (this.opts.source === "screen" ? "screen" : "camera") + ". Look at it. If you see a scam, call scam_alert and warn them. Otherwise just greet them in one short sentence and ask what they need. Do not guess their task or give any steps yet.]",
       });
       emit({ type: "status", status: "live" });
     } catch (err) {
@@ -287,6 +289,8 @@ export class LiveSid {
       emit({ type: "user-caption", text: this.userText.trim(), final: false });
     }
     if (sc?.turnComplete || sc?.interrupted) {
+      emit({ type: "turn-end", highlighted: this.highlightedThisTurn, spoke: !!this.sidText.trim() });
+      this.highlightedThisTurn = false;
       if (this.sidText) emit({ type: "sid-caption", text: this.sidText.trim(), final: true });
       if (this.userText) emit({ type: "user-caption", text: this.userText.trim(), final: true });
       this.sidText = "";
@@ -298,6 +302,7 @@ export class LiveSid {
         const a = (f.args ?? {}) as Record<string, unknown>;
         if (f.name === "highlight") {
           this.stepPending = true;
+          this.highlightedThisTurn = true;
           emit({
             type: "highlight",
             box: Array.isArray(a.box_2d) ? (a.box_2d as number[]) : [],
