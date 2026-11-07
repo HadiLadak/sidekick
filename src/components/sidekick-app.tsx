@@ -415,19 +415,6 @@ export function SidekickApp() {
           </section>
         )}
 
-        {status === "result" && (
-          <Composer
-            t={t}
-            speechLang={langMeta.speech}
-            text={text}
-            setText={setText}
-            image={image}
-            setImage={setImage}
-            onSubmit={submit}
-            simple={prefs.simple}
-            onNotice={setNotice}
-          />
-        )}
         {status === "result" && result && (
           <ResultView
             result={result}
@@ -440,6 +427,22 @@ export function SidekickApp() {
             onStartOver={startOver}
             onAskFamily={() => setFamily(true)}
           />
+        )}
+        {status === "result" && (
+          <section className="flex flex-col gap-3" aria-label={t.followUp}>
+            <h2 className="text-xl font-bold text-ink">{t.followUp}</h2>
+          <Composer
+            t={t}
+            speechLang={langMeta.speech}
+            text={text}
+            setText={setText}
+            image={image}
+            setImage={setImage}
+            onSubmit={submit}
+            simple={prefs.simple}
+            onNotice={setNotice}
+          />
+          </section>
         )}
         {status === "result" && answeredMs !== null && (
           <p className="text-center text-sm text-ink-soft">{t.answeredIn((answeredMs / 1000).toFixed(1))}</p>

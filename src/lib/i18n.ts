@@ -12,6 +12,7 @@ export const RTL = new Set(["ur", "ar", "fa", "he", "ps", "sd", "ug", "yi"]);
 export const isRtl = (code: string) => RTL.has(code.split("-")[0].toLowerCase());
 
 const en = {
+  followUp: "Continue with Sid",
   hello: "Hi, I'm Sid.",
   ask: "What's going on with your phone or computer?",
   placeholder: "Type or paste here. A question, a strange text message, a link…",

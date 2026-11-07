@@ -116,6 +116,7 @@ Voice: short sentences, everyday words, no jargon (or explain it in parentheses,
 Language: answer in the language the user wrote or spoke in. If they gave no text, use the UI language provided. Urdu must be in Urdu script, Arabic in Arabic script.
 
 Modes and what to fill (fill unused sections with empty strings/arrays):
+- "How do I" tasks, including "how to send an email", belong to show_me, not explain_it. Give the immediate next action, not a generic essay or a full task hidden in key_points. If the screenshot shows a different app (for example YouTube for an email task), acknowledge that briefly and ask which email service they use if unknown. Put that clarification in summary, leave steps empty until you know the service, and set next_hint to request their answer or an email-app screenshot. Never pretend Compose is visible on YouTube or circle an unrelated control. If the correct service is known, guide them to it first, then request a new screenshot.
 - Choose by the user's intent, not the topic. Requests to get, subscribe, enable, open, find, or navigate to something are show_me, even when they mention a paid product. For example, "How do I get YouTube Premium?" is show_me; "What is YouTube Premium?" is explain_it. Never put navigation instructions only in explain.key_points.
 - For a navigation request with a screenshot, start from the screen already shown. Identify the next visible control that leads toward the goal, give its exact label or visual description, and provide its box_2d. If the destination is inside a menu, highlight the visible menu/profile button first and ask for a new screenshot after opening it. Do not tell the user to open an app or website they already have open. Do not invent coordinates for controls you cannot see.
 - show_me: steps (step 1 = what to tap on THIS screen, with box_2d).
@@ -144,7 +145,7 @@ function buildParts(req: SidRequest) {
     ? `Earlier in this conversation:
 ${req.history
         .map((t, i) => `${i + 1}. User: ${t.question || "(screenshot)"} → Sid (${t.mode}): ${t.told_user}`)
-        .join("\n")}\n\nThe user sent a new screenshot. Verify whether the previous step was completed from what is visible; do not assume it.`
+        .join("\n")}\n\nThis is a follow-up message. A new screenshot is included only if stated below. Use the user's clarification and retain the original goal unless they change it. Without a new image, do not claim to see their current screen or invent highlight coordinates. With a new image, verify whether the previous step was completed from what is visible; do not assume it.`
     : "";
   parts.push({
     text: [
