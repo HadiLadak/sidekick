@@ -155,7 +155,7 @@ ${req.history
       history,
       req.image
         ? `A screenshot is attached. It is from a ${req.device === "phone" ? "phone (say Tap)" : req.device === "computer" ? "computer (say Click)" : "device"}.`
-        : "No screenshot.",
+        : "No new screenshot. If this is a follow-up question or the user is stuck, answer their specific concern using the conversation history before asking for another screenshot. Do not assume they completed the previous step. Ask for an image only when the answer needs visual information you do not have.",
       `User message: ${req.text.trim() || "(no text, just the screenshot: work out what they need help with)"}`,
     ]
       .filter(Boolean)

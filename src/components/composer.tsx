@@ -17,6 +17,7 @@ export function Composer({
   onSubmit,
   simple,
   onNotice,
+  followUp = false,
 }: {
   t: Strings;
   speechLang: string;
@@ -27,6 +28,7 @@ export function Composer({
   onSubmit: (override?: { text?: string }) => void;
   simple: boolean;
   onNotice: (msg: string) => void;
+  followUp?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -176,7 +178,7 @@ export function Composer({
             <X className="size-5" aria-hidden="true" />
           </button>
         </div>
-      ) : (
+      ) : !followUp ? (
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
@@ -190,7 +192,7 @@ export function Composer({
             <span className="text-sm text-ink-soft">{t.orPaste}</span>
           </span>
         </button>
-      )}
+      ) : null}
 
       <label htmlFor="sid-question" className="mb-2 block px-2 text-lg font-bold text-ink">
         {t.ask}
@@ -205,7 +207,7 @@ export function Composer({
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSubmit();
         }}
-        placeholder={t.placeholder}
+        placeholder={followUp ? t.followUpPlaceholder : t.placeholder}
         rows={simple ? 2 : 3}
         className="block w-full resize-y rounded-xl border-2 border-line bg-paper px-3 py-3 text-lg leading-relaxed text-ink outline-none focus:border-sky placeholder:text-ink-soft/80"
       />

@@ -13,6 +13,8 @@ export const isRtl = (code: string) => RTL.has(code.split("-")[0].toLowerCase())
 
 const en = {
   followUp: "Continue with Sid",
+  followUpHelp: "Stuck on this step? Ask a question below. No new screenshot needed.",
+  followUpPlaceholder: "For example: I can't find that button. What should I do?",
   hello: "Hi, I'm Sid.",
   ask: "What's going on with your phone or computer?",
   placeholder: "Type or paste here. A question, a strange text message, a link…",

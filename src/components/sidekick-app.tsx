@@ -87,7 +87,7 @@ export function SidekickApp() {
         question: req.text,
         mode: r.mode,
         title: r.title,
-        told_user: [r.summary, r.steps[0]?.instruction].filter(Boolean).join(" "),
+        told_user: [r.summary, ...r.steps.flatMap((step) => [step.instruction, step.detail]), r.explain.answer, r.next_hint].filter(Boolean).join(" "),
       },
     ]);
   }
@@ -428,9 +428,10 @@ export function SidekickApp() {
             onAskFamily={() => setFamily(true)}
             reply={
 <section className="flex flex-col gap-3" aria-label={t.followUp}>
-            <h2 className="text-xl font-bold text-ink">{t.followUp}</h2>
+            <p className="text-lg text-ink-soft">{t.followUpHelp}</p>
           <Composer
             t={{ ...t, ask: t.followUp }}
+            followUp
             speechLang={langMeta.speech}
             text={text}
             setText={setText}
