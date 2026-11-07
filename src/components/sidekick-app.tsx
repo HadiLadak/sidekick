@@ -2,7 +2,7 @@
 
 import { Radio, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { DEMOS, type Demo } from "@/lib/demos";
+import { type Demo } from "@/lib/demos";
 import { LIVE_STRINGS } from "@/lib/live-i18n";
 import { liveSupported, type Frame, type LiveSource } from "@/lib/live-session";
 import { prepareImage, type PreparedImage } from "@/lib/image";
@@ -188,28 +188,6 @@ export function SidekickApp() {
     }
   }
 
-  async function runDemo(demo: Demo) {
-    let img: PreparedImage | null = null;
-    if (demo.image) {
-      const blob = await (await fetch(demo.image)).blob();
-      img = await prepareImage(blob);
-    }
-    setText(demo.prompt);
-    setImage(img);
-    setProblem(demo.prompt);
-    if (demo.cached) {
-      // Examples use a saved real answer from Sid: instant, and it spares the API quota.
-      const req = { text: demo.prompt, image: img, history: [], demo };
-      setLastRequest(req);
-      setShownImage(img);
-      setAnsweredMs(null);
-      showResult(demo.cached, req);
-      window.scrollTo({ top: 0 });
-      return;
-    }
-    ask({ text: demo.prompt, image: img, history: [], demo });
-  }
-
   function startOver() {
     askCtrl.current?.abort();
     stopSpeaking();
@@ -309,49 +287,6 @@ export function SidekickApp() {
               <ShieldCheck className="size-4 shrink-0 text-safe" aria-hidden="true" />
               {t.neverAsk}
             </p>
-
-            <section aria-labelledby="demos-title" className="flex flex-col gap-3">
-              <h2 id="demos-title" className="font-hand text-xl font-bold text-ink">
-                {t.tryOne}
-              </h2>
-              <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
-                {DEMOS.map((d) => (
-                  <li key={d.id} className="w-[11.5rem] shrink-0 snap-start sm:w-auto">
-                    <button
-                      type="button"
-                      onClick={() => runDemo(d)}
-                      className="group flex h-full w-full flex-col overflow-hidden rounded-2xl bg-surface text-start ring-1 ring-line transition-[box-shadow,transform] hover:-translate-y-0.5 hover:ring-2 hover:ring-sky"
-                    >
-                      {d.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- small static thumbnail
-                        <img
-                          src={d.image}
-                          alt=""
-                          width={368}
-                          height={200}
-                          loading="lazy"
-                          className="h-28 w-full object-cover object-top"
-                        />
-                      ) : (
-                        <span
-                          className="flex h-28 w-full items-center bg-sky-bg p-3 text-lg leading-snug font-semibold text-ink"
-                          lang={d.lang}
-                          dir="auto"
-                        >
-                          “{d.prompt}”
-                        </span>
-                      )}
-                      <span className="flex flex-1 flex-col gap-1 p-3">
-                        <span className="text-xs font-bold text-ink-soft">{t.modes[d.mode]}</span>
-                        <span className="leading-snug font-semibold text-ink" dir="auto">
-                          {t.demoLabels[d.id] ?? d.label}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
 
             <ModeGuide t={t} />
             <p className="text-center text-sm text-ink-soft">{t.privacyNote}</p>
