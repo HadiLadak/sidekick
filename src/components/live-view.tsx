@@ -336,6 +336,12 @@ export function LiveView({
     sidRef.current?.stop();
   }
 
+  function finish() {
+    // End sharing and audio before showing the celebration in the main window.
+    stop();
+    cb.current.onCelebrate();
+  }
+
   function toggleMute() {
     sidRef.current?.setListening(muted);
   }
@@ -493,7 +499,7 @@ export function LiveView({
         {steps.length > 0 && (
           <button
             type="button"
-            onClick={() => cb.current.onCelebrate()}
+            onClick={finish}
             className={cn(
               "flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-lg font-bold ring-2",
               allDone ? "pop-in bg-safe text-safe-bg ring-safe" : "bg-safe-bg text-safe ring-safe",
