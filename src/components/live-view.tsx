@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { LiveCopy } from "@/lib/live-i18n";
 import { LiveSid, screenShareSupported, type Frame, type LiveEvent, type LiveSource } from "@/lib/live-session";
+import { captionLang } from "@/lib/caption";
 import { cn } from "@/lib/utils";
 import { Sid } from "./sid";
 import { TapSpot } from "./tap-spot";
@@ -93,6 +94,12 @@ export function LivePreflight({
       </fieldset>
 
       <ul className="flex flex-col gap-3 rounded-2xl bg-caution-bg p-4 text-ink">
+        {source === "screen" && (
+          <li className="flex gap-3">
+            <Monitor className="mt-0.5 size-5 shrink-0 text-caution" aria-hidden="true" />
+            <span className="text-lg">{c.pickHint}</span>
+          </li>
+        )}
         <li className="flex gap-3">
           <Lock className="mt-0.5 size-5 shrink-0 text-caution" aria-hidden="true" />
           <span className="text-lg">{c.closePasswords}</span>
@@ -158,8 +165,11 @@ export function LiveView({
   const [current, setCurrent] = useState<LiveSource>(source);
   const [switching, setSwitching] = useState(false);
   const [notice, setNotice] = useState("");
+  const [wholeScreen, setWholeScreen] = useState(false);
   const lastQuestion = useRef("");
   const autoFloat = useRef<(() => void) | null>(null);
+  const autoFloated = useRef(false);
+  const opening = useRef(false);
   const cb = useRef({ onFail, onAskFamily, onCelebrate, onEnd });
   useEffect(() => {
     cb.current = { onFail, onAskFamily, onCelebrate, onEnd };
@@ -176,6 +186,11 @@ export function LiveView({
             setStatus(e.status);
             if (e.status === "live" && source === "screen") autoFloat.current?.();
             if (e.status === "ended") cb.current.onEnd();
+            break;
+          case "surface":
+            // Whole screen shared: Sid sees himself. Keep going, but get him out of the picture.
+            setWholeScreen(e.surface === "monitor");
+            if (e.surface === "monitor") autoFloat.current?.();
             break;
           case "source":
             setCurrent(e.source);
@@ -263,7 +278,8 @@ export function LiveView({
 
   async function popOut() {
     const api = docPiP();
-    if (!api) return;
+    if (!api || opening.current) return;
+    opening.current = true;
     try {
       const w = await api.requestWindow({ width: 400, height: 660 });
       // Bring our styles, fonts, theme and language into the floating window.
@@ -297,13 +313,18 @@ export function LiveView({
       w.addEventListener("pagehide", () => setPip(null));
       setPip(w);
     } catch {
-      /* not allowed: stay in-page */
+      /* not allowed (e.g. no recent click): stay in-page; the whole-screen tip offers a button */
+    } finally {
+      opening.current = false;
     }
   }
 
   useEffect(() => {
     autoFloat.current = () => {
-      if (docPiP() && !pip) popOut();
+      // Once per session: if the user brings Sid back, he stays back
+      if (autoFloated.current || !docPiP() || pip) return;
+      autoFloated.current = true;
+      popOut();
     };
   });
 
@@ -361,7 +382,7 @@ export function LiveView({
         <div ref={mouthRef} className={cn("shrink-0", speaking && "sid-talking")}>
           <Sid mood={scam ? "worried" : status === "connecting" ? "thinking" : "helping"} className={pip ? "size-16" : "size-20"} />
         </div>
-        <div className="bubble min-h-20 flex-1 bg-surface p-3 ring-1 ring-line" aria-live="polite" lang={lang} dir="auto">
+        <div className="bubble min-h-20 flex-1 bg-surface p-3 ring-1 ring-line" aria-live="polite" lang={captionLang(sidLine, lang)} dir="auto">
           <p className={cn("leading-snug font-bold text-ink", simple || pip ? "text-xl" : "text-2xl")}>
             {sidLine || (status === "connecting" ? c.connecting : c.listening)}
           </p>
@@ -446,6 +467,18 @@ export function LiveView({
           <Smartphone className="size-5 shrink-0" aria-hidden="true" />
           {c.phoneHint}
         </p>
+      )}
+
+      {wholeScreen && current === "screen" && !pip && (
+        <div className="flex flex-col gap-2 rounded-2xl bg-caution-bg p-3 text-ink ring-1 ring-caution lg:col-start-2" role="status">
+          <p className="text-lg" dir="auto">{c.wholeScreenTip}</p>
+          {docPiP() && (
+            <button type="button" onClick={popOut} className="flex h-11 items-center justify-center gap-2 self-start rounded-full bg-ink px-4 font-semibold text-paper">
+              <PictureInPicture2 className="size-5" aria-hidden="true" />
+              {c.wholeScreenFloat}
+            </button>
+          )}
+        </div>
       )}
 
       {notice && (

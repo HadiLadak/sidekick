@@ -54,7 +54,7 @@ const logs = [];
 app.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
 app.on("pageerror", (e) => logs.push(`[pageerror] ${e.message}`));
 app.on("websocket", (ws) => logs.push(`[ws] open ${ws.url().slice(0, 90)}`));
-await app.goto(appUrl + (process.env.TEST_SCREEN ? `?testScreen=${process.env.TEST_SCREEN}` : ""));
+await app.goto(appUrl + (process.env.TEST_SCREEN ? `?testScreen=${process.env.TEST_SCREEN}` : "") + (process.env.TEST_SURFACE ? `&testSurface=${process.env.TEST_SURFACE}` : ""));
 await app.getByRole("button", { name: /start live help/i }).first().click();
 await app.getByRole("button", { name: /start talking/i }).click();
 if (process.env.NOPIP) {
@@ -73,6 +73,18 @@ for (let i = 1; i <= 9; i++) {
   if (process.env.BACK_AT && i === Number(process.env.BACK_AT)) {
     await app.getByRole("button", { name: /back to my screen/i }).click();
     logs.push(`--- switched back to screen`);
+  }
+  // BRINGBACK_AT=i: close the floating window so the main page shows captions again
+  if (process.env.BRINGBACK_AT && i === Number(process.env.BRINGBACK_AT)) {
+    await app.getByRole("button", { name: /bring sid back/i }).click({ timeout: 5000 }).catch(() => {});
+    await app.waitForTimeout(500);
+    await app.screenshot({ path: path.join(outDir, `floated-back.png`) });
+    logs.push(`--- brought Sid back from the floating window`);
+  }
+  // SAY="..." types a question to Sid (localhost test hook) at SAY_AT
+  if (process.env.SAY && i === Number(process.env.SAY_AT || 2)) {
+    await app.evaluate((t) => window.__sidSay?.(t), process.env.SAY);
+    logs.push(`--- said: ${process.env.SAY}`);
   }
   await app.screenshot({ path: path.join(outDir, `live-${i}.png`) });
   const text = await app.locator("main").innerText();

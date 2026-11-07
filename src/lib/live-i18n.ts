@@ -1,6 +1,9 @@
 import type { Lang } from "./i18n";
 
 const en = {
+  pickHint: "When Chrome asks, pick the window or tab you need help with, not your entire screen.",
+  wholeScreenTip: "You're sharing your whole screen, so Sid can see himself. That's fine. Move Sid out of the way and switch to the app you need help with.",
+  wholeScreenFloat: "Move Sid to a small window",
   cta: "Get help live",
   ctaSub: "Talk to Sid while he watches your screen",
   ctaButton: "Start live help",
@@ -50,6 +53,9 @@ export type LiveCopy = typeof en;
 
 const fr: LiveCopy = {
   ...en,
+  pickHint: "Quand Chrome le demande, choisissez la fenêtre ou l'onglet qui pose problème, pas tout l'écran.",
+  wholeScreenTip: "Vous partagez tout l'écran, donc Sid se voit lui-même. Ce n'est pas grave. Mettez Sid de côté et ouvrez l'application qui pose problème.",
+  wholeScreenFloat: "Mettre Sid dans une petite fenêtre",
   ctaButton: "Démarrer l'aide en direct",
   cta: "Aide en direct",
   ctaSub: "Parlez à Sid pendant qu'il regarde votre écran",
@@ -97,6 +103,9 @@ const fr: LiveCopy = {
 
 const es: LiveCopy = {
   ...en,
+  pickHint: "Cuando Chrome pregunte, elige la ventana o pestaña con la que necesitas ayuda, no toda la pantalla.",
+  wholeScreenTip: "Estás compartiendo toda la pantalla, así que Sid se ve a sí mismo. No pasa nada. Aparta a Sid y abre la aplicación con la que necesitas ayuda.",
+  wholeScreenFloat: "Poner a Sid en una ventana pequeña",
   ctaButton: "Empezar ayuda en vivo",
   cta: "Ayuda en vivo",
   ctaSub: "Habla con Sid mientras mira tu pantalla",
@@ -144,6 +153,9 @@ const es: LiveCopy = {
 
 const ur: LiveCopy = {
   ...en,
+  pickHint: "جب کروم پوچھے تو وہ ونڈو یا ٹیب چنیں جس میں مدد چاہیے، پوری اسکرین نہیں۔",
+  wholeScreenTip: "آپ پوری اسکرین شیئر کر رہے ہیں، اس لیے سِڈ خود کو دیکھ رہا ہے۔ کوئی بات نہیں۔ سِڈ کو ایک طرف کریں اور وہ ایپ کھولیں جس میں مدد چاہیے۔",
+  wholeScreenFloat: "سِڈ کو چھوٹی ونڈو میں رکھیں",
   ctaButton: "لائیو مدد شروع کریں",
   cta: "لائیو مدد لیں",
   ctaSub: "سِڈ آپ کی اسکرین دیکھتے ہوئے آپ سے بات کرے گا",
@@ -191,6 +203,9 @@ const ur: LiveCopy = {
 
 const ar: LiveCopy = {
   ...en,
+  pickHint: "عندما يسألك كروم، اختر النافذة أو علامة التبويب التي تحتاج مساعدة فيها، وليس الشاشة كلها.",
+  wholeScreenTip: "أنت تشارك الشاشة كلها، لذلك يرى سِد نفسه. لا بأس. أبعد سِد جانبًا وافتح التطبيق الذي تحتاج مساعدة فيه.",
+  wholeScreenFloat: "ضع سِد في نافذة صغيرة",
   ctaButton: "ابدأ المساعدة المباشرة",
   cta: "مساعدة مباشرة",
   ctaSub: "تحدّث مع سِد وهو يرى شاشتك",

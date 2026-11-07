@@ -52,3 +52,4 @@ node_modules/
 
 .vercel
 .env*
+public/test-*.jpg

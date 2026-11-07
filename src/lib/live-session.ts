@@ -1,6 +1,7 @@
 "use client";
 
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
+import { cleanCaption } from "./caption";
 
 export type LiveSource = "screen" | "camera";
 
@@ -14,6 +15,8 @@ export interface Frame {
 export type LiveEvent =
   | { type: "status"; status: "connecting" | "live" | "ended" }
   | { type: "source"; source: LiveSource }
+  /** What kind of screen is shared: "monitor" means the whole screen, so Sid can see himself */
+  | { type: "surface"; surface: string }
   | { type: "frame"; frame: Frame }
   | { type: "sid-caption"; text: string; final: boolean }
   | { type: "user-caption"; text: string; final: boolean }
@@ -92,6 +95,8 @@ export class LiveSid {
   private lastWatch = 0;
   private latest: Frame | null = null;
   private sidText = "";
+  /** Seconds of Sid's voice received this turn: captions never run ahead of what was said */
+  private turnAudioSec = 0;
   private userText = "";
   private speaking = false;
   private stepPending = false;
@@ -140,6 +145,7 @@ export class LiveSid {
           : await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
       this.current = this.opts.source;
       this.watchEnded(this.video, this.opts.source);
+      if (this.opts.source === "screen") this.reportSurface(this.video);
       this.mic = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
       });
@@ -186,6 +192,10 @@ export class LiveSid {
         text: "[The user just started live help and is sharing their " + (this.opts.source === "screen" ? "screen" : "camera") + ". Look at it. If you see a scam, call scam_alert and warn them. Otherwise just greet them in one short sentence and ask what they need. Do not guess their task or give any steps yet.]",
       });
       emit({ type: "status", status: "live" });
+      // Automated tests can type to Sid (localhost only)
+      if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+        (window as unknown as { __sidSay: (t: string) => void }).__sidSay = (t) => this.say(t);
+      }
     } catch (err) {
       const e = err as Error;
       const denied = e?.name === "NotAllowedError";
@@ -218,7 +228,21 @@ export class LiveSid {
       setInterval(draw, 500);
       return c.captureStream(2);
     }
-    return navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false });
+    // Steer people to one window or tab (no hall-of-mirrors), and never offer Sid's own tab
+    return navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 5, displaySurface: "window" },
+      audio: false,
+      selfBrowserSurface: "exclude",
+      surfaceSwitching: "include",
+      preferCurrentTab: false,
+    } as DisplayMediaStreamOptions);
+  }
+
+  private reportSurface(stream: MediaStream) {
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    const test = local ? new URLSearchParams(location.search).get("testSurface") : null;
+    const surface = test || (stream.getVideoTracks()[0]?.getSettings() as { displaySurface?: string }).displaySurface || "";
+    if (surface) this.opts.onEvent({ type: "surface", surface });
   }
 
   private async connect(attempt: number): Promise<void> {
@@ -288,16 +312,21 @@ export class LiveSid {
     }
     if (sc?.outputTranscription?.text) {
       this.sidText += sc.outputTranscription.text;
-      emit({ type: "sid-caption", text: this.sidText.trim(), final: false });
+      const shown = cleanCaption(this.sidText, this.turnAudioSec);
+      if (shown) emit({ type: "sid-caption", text: shown, final: false });
     }
     if (sc?.inputTranscription?.text) {
       this.userText += sc.inputTranscription.text;
       emit({ type: "user-caption", text: this.userText.trim(), final: false });
     }
     if (sc?.turnComplete || sc?.interrupted) {
-      emit({ type: "turn-end", highlighted: this.highlightedThisTurn, spoke: !!this.sidText.trim() });
+      const spoke = this.turnAudioSec > 0;
+      emit({ type: "turn-end", highlighted: this.highlightedThisTurn, spoke });
       this.highlightedThisTurn = false;
-      if (this.sidText) emit({ type: "sid-caption", text: this.sidText.trim(), final: true });
+      // Text with no voice behind it was never said aloud: don't show it
+      const shown = spoke ? cleanCaption(this.sidText, this.turnAudioSec) : "";
+      if (shown) emit({ type: "sid-caption", text: shown, final: true });
+      this.turnAudioSec = 0;
       if (this.userText) emit({ type: "user-caption", text: this.userText.trim(), final: true });
       this.sidText = "";
       this.userText = "";
@@ -338,6 +367,7 @@ export class LiveSid {
   private play(b64: string) {
     if (!this.outCtx || !this.analyser) return;
     const pcm = new Int16Array(fromBase64(b64));
+    this.turnAudioSec += pcm.length / 24000;
     const buf = this.outCtx.createBuffer(1, pcm.length, 24000);
     const ch = buf.getChannelData(0);
     for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 0x8000;
@@ -505,6 +535,7 @@ export class LiveSid {
       this.settledSent = true;
       this.flushAudio();
       this.opts.onEvent({ type: "source", source: to });
+      if (to === "screen") this.reportSurface(next);
       // Give the new picture a moment to arrive before Sid looks
       await new Promise((r) => setTimeout(r, 900));
       if (this.stopped) return;
