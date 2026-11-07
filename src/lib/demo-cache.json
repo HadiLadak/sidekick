@@ -1,0 +1,250 @@
+{
+  "scam-text": {
+    "mode": "scam_check",
+    "language": "en",
+    "title": "Fake Canada Post text message",
+    "summary": "Do not pay anything. This text is a scam trying to steal your card details.",
+    "sensitive_info_visible": false,
+    "steps": [
+      {
+        "instruction": "Tap Report Junk above the text.",
+        "detail": "This will safely delete the message and report the scammer.",
+        "target_label": "Report Junk",
+        "box_2d": [
+          270,
+          396,
+          293,
+          605
+        ]
+      }
+    ],
+    "fix": {
+      "what_went_wrong": "",
+      "likely_cause": ""
+    },
+    "scam": {
+      "verdict": "scam",
+      "reasons": [
+        "Canada Post never asks for payments or personal information by text message.",
+        "The link address ends in .info instead of the real Canada Post website.",
+        "It rushes you with a 24-hour deadline to make you panic."
+      ],
+      "do_not": [
+        "Do not tap the link.",
+        "Do not enter any bank card numbers or personal details.",
+        "Do not reply to the message."
+      ],
+      "how_to_close": [
+        "Tap 'Report Junk' on your screen to delete and block it."
+      ]
+    },
+    "explain": {
+      "answer": "",
+      "key_points": []
+    },
+    "done": false,
+    "next_hint": "",
+    "model": "gemini-3.8-flash"
+  },
+  "video-call": {
+    "mode": "show_me",
+    "language": "en",
+    "title": "Starting a video call",
+    "summary": "You can start a video call right from this screen. Just tap the small video camera icon near the top right.",
+    "sensitive_info_visible": false,
+    "steps": [
+      {
+        "instruction": "Tap the video camera icon at the top.",
+        "detail": "It sits right next to Ali's name bar on the right side.",
+        "target_label": "Video call",
+        "box_2d": [
+          66,
+          622,
+          111,
+          706
+        ]
+      },
+      {
+        "instruction": "Tap Call if a confirmation message pops up.",
+        "detail": "Once Ali answers, you will see each other on screen.",
+        "target_label": "Call",
+        "box_2d": []
+      }
+    ],
+    "fix": {
+      "what_went_wrong": "",
+      "likely_cause": ""
+    },
+    "scam": {
+      "verdict": "",
+      "reasons": [],
+      "do_not": [],
+      "how_to_close": []
+    },
+    "explain": {
+      "answer": "",
+      "key_points": []
+    },
+    "done": false,
+    "next_hint": "",
+    "model": "gemini-3.8-flash"
+  },
+  "virus-popup": {
+    "mode": "scam_check",
+    "language": "en",
+    "title": "Fake Microsoft security alert scam",
+    "summary": "Do not call that number. This is a fake pop-up trying to trick you into paying scammers.",
+    "sensitive_info_visible": false,
+    "steps": [
+      {
+        "instruction": "Click the X at the very top right to close.",
+        "detail": "This shuts down the fake webpage completely.",
+        "target_label": "Close",
+        "box_2d": [
+          9,
+          967,
+          42,
+          988
+        ]
+      },
+      {
+        "instruction": "Press Alt and F4 together if it stays open.",
+        "detail": "On your keyboard, holding Alt and tapping F4 will force the webpage to close.",
+        "target_label": "",
+        "box_2d": []
+      }
+    ],
+    "fix": {
+      "what_went_wrong": "",
+      "likely_cause": ""
+    },
+    "scam": {
+      "verdict": "scam",
+      "reasons": [
+        "Microsoft never puts phone numbers in security pop-ups or asks you to call them.",
+        "The website address at the top is not Microsoft; it is a fake site created by scammers.",
+        "It uses scary threats about stolen banking info to make you panic and call right away."
+      ],
+      "do_not": [
+        "Do not call the 1-888 phone number.",
+        "Do not click 'Call Now' or 'Cancel' inside the blue screen.",
+        "Do not allow anyone who answers that number to connect to your computer."
+      ],
+      "how_to_close": [
+        "Click the X at the top right corner of your browser window.",
+        "If the mouse is stuck or the window refuses to close, hold down your computer's power button for 10 seconds to turn it off safely."
+      ]
+    },
+    "explain": {
+      "answer": "",
+      "key_points": []
+    },
+    "done": false,
+    "next_hint": "Let me know if the window closed safely or if it is still stuck on your screen.",
+    "model": "gemini-3.8-flash"
+  },
+  "storage-full": {
+    "mode": "fix_it",
+    "language": "en",
+    "title": "Phone Storage Is Full",
+    "summary": "Your phone does not have room left to save new photos. We can open Settings to see what is filling it up.",
+    "sensitive_info_visible": false,
+    "steps": [
+      {
+        "instruction": "Tap Settings.",
+        "detail": "This will take you to your phone storage page.",
+        "target_label": "Settings",
+        "box_2d": [
+          473,
+          110,
+          532,
+          887
+        ]
+      },
+      {
+        "instruction": "Look at what is taking up space.",
+        "detail": "Usually videos, unused apps, or old messages take up the most room.",
+        "target_label": "",
+        "box_2d": []
+      },
+      {
+        "instruction": "Delete unwanted videos or unused apps.",
+        "detail": "You can also open the Photos app and empty your Recently Deleted album.",
+        "target_label": "",
+        "box_2d": []
+      }
+    ],
+    "fix": {
+      "what_went_wrong": "The camera stopped working because your phone has no free storage space left.",
+      "likely_cause": "Saved photos, large videos, or unused apps have filled up your device memory."
+    },
+    "scam": {
+      "verdict": "",
+      "reasons": [],
+      "do_not": [],
+      "how_to_close": []
+    },
+    "explain": {
+      "answer": "",
+      "key_points": []
+    },
+    "done": false,
+    "next_hint": "After you tap Settings, send me a screenshot of what appears.",
+    "model": "gemini-3.7-flash"
+  },
+  "wifi-settings": {
+    "mode": "show_me",
+    "language": "en",
+    "title": "Connect to Wi-Fi",
+    "summary": "You are in the right place! We just need to open your network settings to find her Wi-Fi name.",
+    "sensitive_info_visible": false,
+    "steps": [
+      {
+        "instruction": "Tap Network & internet.",
+        "detail": "It is the very first option near the top with the blue circle.",
+        "target_label": "Network & internet",
+        "box_2d": [
+          251,
+          50,
+          320,
+          660
+        ]
+      },
+      {
+        "instruction": "Tap Internet or Wi-Fi on the next screen.",
+        "detail": "",
+        "target_label": "Internet",
+        "box_2d": []
+      },
+      {
+        "instruction": "Find your daughter's Wi-Fi network name and tap it.",
+        "detail": "",
+        "target_label": "",
+        "box_2d": []
+      },
+      {
+        "instruction": "Type her Wi-Fi password and tap Connect.",
+        "detail": "",
+        "target_label": "Connect",
+        "box_2d": []
+      }
+    ],
+    "fix": {
+      "what_went_wrong": "",
+      "likely_cause": ""
+    },
+    "scam": {
+      "verdict": "",
+      "reasons": [],
+      "do_not": [],
+      "how_to_close": []
+    },
+    "explain": {
+      "answer": "",
+      "key_points": []
+    },
+    "done": false,
+    "next_hint": "Tap Network & internet, then send a new screenshot if you want help finding her Wi-Fi name.",
+    "model": "gemini-3.8-flash"
+  }
+}
