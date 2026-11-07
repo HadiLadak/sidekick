@@ -387,9 +387,10 @@ export function LiveView({
           width={shown.width}
           height={shown.height}
           box={hl?.box}
-          label={hl?.label || c.tapHere}
+          label={hl?.label}
+          hereText={{ tap: c.tapHere, click: c.clickHere }}
           alt={hl?.instruction || where}
-          className={pip ? "[&_img]:max-h-[38vh]" : "[&_img]:max-h-[50vh] lg:col-start-1 lg:row-span-6 lg:row-start-2 lg:[&_img]:max-h-[72vh]"}
+          className={pip ? "[&_.tap-media]:max-h-[38vh]" : "[&_.tap-media]:max-h-[50vh] lg:col-start-1 lg:row-span-6 lg:row-start-2 lg:[&_.tap-media]:max-h-[72vh]"}
         />
       ) : (
         <div className="grid aspect-video place-items-center rounded-[1.25rem] border-4 border-dashed border-line text-ink-soft lg:col-start-1 lg:row-span-6 lg:row-start-2">

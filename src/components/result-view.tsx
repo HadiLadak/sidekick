@@ -121,7 +121,6 @@ export function ResultView({
 
   const showSteps = r.mode !== "scam_check" && r.steps.length > 0;
   const tapBox = r.mode === "scam_check" ? r.steps[0]?.box_2d : step === 0 ? current?.box_2d : undefined;
-  const tapLabel = t.tapHere;
 
   return (
     <article className="flex flex-col gap-5" aria-busy={busy}>
@@ -241,9 +240,9 @@ export function ResultView({
           width={image.width}
           height={image.height}
           box={tapBox}
-          label={tapLabel}
+          hereText={{ tap: t.tapHere, click: t.clickHere }}
           tone={r.mode === "scam_check" ? "safe" : "mark"}
-          alt={current?.target_label ? `${t.tapHere}: ${current.target_label}` : "Your screenshot"}
+          alt={current?.target_label || r.title}
         />
       )}
 

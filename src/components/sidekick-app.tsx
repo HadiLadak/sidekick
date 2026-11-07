@@ -226,9 +226,9 @@ export function SidekickApp() {
                       width={780}
                       height={1688}
                       box={[66, 622, 111, 706]}
-                      label={t.tapHere}
+                      hereText={{ tap: t.tapHere, click: t.clickHere }}
                       alt=""
-                      className="w-full border-[3px] border-mark shadow-none [&_img]:max-h-none [&_img]:w-full"
+                      className="w-full border-[3px] border-mark shadow-none [&_.tap-media]:max-h-none [&_.tap-media]:w-full"
                     />
                   </div>
                 </div>
