@@ -20,7 +20,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Strings } from "@/lib/i18n";
 import { isRtl } from "@/lib/i18n";
 import type { PreparedImage } from "@/lib/image";
@@ -81,6 +81,7 @@ export function ResultView({
   onFixed,
   onStartOver,
   onAskFamily,
+  reply,
 }: {
   result: SidResult;
   image: PreparedImage | null;
@@ -91,6 +92,7 @@ export function ResultView({
   onFixed: () => void;
   onStartOver: () => void;
   onAskFamily: () => void;
+  reply?: ReactNode;
 }) {
   const [step, setStep] = useState(0);
   const [speaking, setSpeaking] = useState(false);
@@ -280,6 +282,7 @@ export function ResultView({
 
       {/* Actions */}
       <div className="flex flex-col gap-3 pt-1">
+        {reply}
         {r.next_hint && !r.done && (r.mode === "show_me" || r.mode === "fix_it") && (
           <p lang={r.language} dir={dir} className="font-hand text-lg text-ink-soft">
             {r.next_hint}

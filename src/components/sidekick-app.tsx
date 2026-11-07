@@ -426,13 +426,11 @@ export function SidekickApp() {
             onFixed={() => setCelebrating(result.mode === "scam_check" ? "safe" : "fixed")}
             onStartOver={startOver}
             onAskFamily={() => setFamily(true)}
-          />
-        )}
-        {status === "result" && (
-          <section className="flex flex-col gap-3" aria-label={t.followUp}>
+            reply={
+<section className="flex flex-col gap-3" aria-label={t.followUp}>
             <h2 className="text-xl font-bold text-ink">{t.followUp}</h2>
           <Composer
-            t={t}
+            t={{ ...t, ask: t.followUp }}
             speechLang={langMeta.speech}
             text={text}
             setText={setText}
@@ -443,6 +441,8 @@ export function SidekickApp() {
             onNotice={setNotice}
           />
           </section>
+            }
+          />
         )}
         {status === "result" && answeredMs !== null && (
           <p className="text-center text-sm text-ink-soft">{t.answeredIn((answeredMs / 1000).toFixed(1))}</p>
