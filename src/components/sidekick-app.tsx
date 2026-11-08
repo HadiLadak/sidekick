@@ -290,7 +290,7 @@ export function SidekickApp() {
               <TrustStrip t={t} />
             </div>
 
-            {/* RIGHT: the screenshot and question side. What they add and what Sid answers sit at
+            {/* RIGHT: the screenshot and question side (first), then the corkboard of examples. What they add and what Sid answers sit at
                 the top; the text box is at the bottom, like a conversation. */}
             <div className="flex min-w-0 flex-col gap-5">
               {status === "idle" && (
@@ -302,7 +302,7 @@ export function SidekickApp() {
                     simple={prefs.simple}
                     onPick={pickExample}
                     onMood={setHoverMode}
-                    className={cn("order-last lg:order-none", image && "lg:hidden")}
+                    className={cn("order-last", image && "lg:hidden")}
                   />
                 </>
               )}
