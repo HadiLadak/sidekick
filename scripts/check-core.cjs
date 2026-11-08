@@ -36,3 +36,41 @@ assert.equal(sid.modelBusy, true);
 sid.onMessage({ serverContent: { turnComplete: true } });
 assert.equal(sid.modelBusy, false);
 console.log("PASS live turn stays busy until completion and tool acknowledgments stay silent");
+
+// Live captions: leaked prompt stage directions and markdown are never shown.
+const { cleanCaption } = require("../src/lib/caption.ts");
+const cap = (raw) => cleanCaption(raw, 60);
+assert.equal(cap("<no speech{pause}"), "");
+assert.equal(cap("Tap the blue Settings icon. <no speech{pause}"), "Tap the blue Settings icon.");
+assert.equal(cap("Okay. {pause} more"), "Okay.");
+assert.equal(cap("Good. [no speech]"), "Good.");
+assert.equal(cap("Fine (no_speech)"), "Fine");
+assert.equal(cap("< No Speech >"), "");
+assert.equal(cap("Click Wi-Fi. **Step 2** do this"), "Click Wi-Fi.");
+assert.equal(cap("Done.\n\n- extra list"), "Done.");
+assert.equal(cap("Tap here, then wait a little."), "Tap here, then wait a little.");
+assert.equal(cap("There is no speech bubble on screen."), "There is no speech bubble on screen."); // plain words stay
+assert.equal(cap("بٹن دبائیں۔ <no speech{pause}"), "بٹن دبائیں۔");
+console.log("PASS live captions drop leaked stage directions and markdown, keep real speech");
+
+// ...and through the live session itself: nothing leaked reaches the screen or the next progress prompt.
+{
+  const events = [];
+  const live = new LiveSid({ source: "screen", lang: "en", onEvent: (e) => events.push(e) });
+  live.onMessage({ serverContent: { inputTranscription: { text: "Help me with Wi-Fi" } } });
+  live.onMessage({ serverContent: { turnComplete: true } });
+  // a turn that is only a leaked stage direction (with some audio behind it)
+  live.turnAudioSec = 2;
+  live.onMessage({ serverContent: { outputTranscription: { text: "<no speech{pause}" } } });
+  live.onMessage({ serverContent: { turnComplete: true } });
+  assert.ok(!events.some((e) => e.type === "sid-caption"), "no caption for a stage-direction-only turn");
+  assert.equal(live.stepPending, false, "a stage-direction-only turn is not a new step");
+  // a real instruction followed by a leak
+  live.turnAudioSec = 3;
+  live.onMessage({ serverContent: { outputTranscription: { text: "Click the Wi-Fi icon. <no speech{pause}" } } });
+  live.onMessage({ serverContent: { turnComplete: true } });
+  const caps = events.filter((e) => e.type === "sid-caption").map((e) => e.text);
+  assert.ok(caps.length > 0 && caps.every((c) => c === "Click the Wi-Fi icon."), caps.join(" | "));
+  assert.equal(live.lastInstruction, "Click the Wi-Fi icon.");
+  console.log("PASS live session shows and remembers only what Sid really said");
+}

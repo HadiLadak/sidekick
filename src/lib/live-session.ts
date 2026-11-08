@@ -379,9 +379,12 @@ export class LiveSid {
     if (sc?.turnComplete || sc?.interrupted) {
       this.modelBusy = false;
       const spoke = this.turnAudioSec > 0;
-      if (spoke && this.taskStarted && this.sidText.trim()) {
+      // Remember what Sid actually said (no leaked "<no speech{pause}" etc.): it goes back into the
+      // next progress-check prompt, and a turn of only stage directions isn't a new step.
+      const said = cleanCaption(this.sidText, Number.MAX_SAFE_INTEGER);
+      if (spoke && this.taskStarted && said) {
         this.stepPending = true;
-        this.lastInstruction = this.sidText.trim();
+        this.lastInstruction = said;
       }
       emit({ type: "turn-end", highlighted: this.highlightedThisTurn, spoke });
       this.highlightedThisTurn = false;
