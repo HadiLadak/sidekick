@@ -74,3 +74,61 @@ console.log("PASS live captions drop leaked stage directions and markdown, keep 
   assert.equal(live.lastInstruction, "Click the Wi-Fi icon.");
   console.log("PASS live session shows and remembers only what Sid really said");
 }
+
+// Bare "no speech" and meta-only captions are dropped too; real sentences stay.
+assert.equal(cap("no speech. and all"), "");
+assert.equal(cap("No speech"), "");
+assert.equal(cap("Unchanged."), "");
+assert.equal(cap("Silence"), "");
+assert.equal(cap("Waiting..."), "");
+assert.equal(cap("Click Save. No speech."), "Click Save.");
+assert.equal(cap("There is no speech bubble on screen."), "There is no speech bubble on screen.");
+assert.equal(cap("Nothing has changed yet, so tap Save."), "Nothing has changed yet, so tap Save.");
+console.log("PASS bare 'no speech' and meta-only captions are dropped");
+
+// Automatic progress checks: Sid stays silent unless the model reports progress (step_done).
+{
+  const events = [];
+  const played = [];
+  const live = new LiveSid({ source: "screen", lang: "en", onEvent: (e) => events.push(e) });
+  live.play = (b) => { played.push(b); live.turnAudioSec += 1; };
+  live.session = { sendToolResponse() {} };
+  live.stepPending = true;
+  live.lastInstruction = "Click the Wi-Fi icon.";
+
+  // 1. check finds nothing: model still talks ("no speech. and all") -> unheard, unseen
+  live.gated = true;
+  live.onMessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: "AAAA", mimeType: "audio/pcm" } }] } } });
+  live.onMessage({ serverContent: { outputTranscription: { text: "no speech. and all" } } });
+  live.onMessage({ serverContent: { turnComplete: true } });
+  assert.equal(played.length, 0, "no audio played for a no-progress check");
+  assert.ok(!events.some((e) => e.type === "sid-caption" || e.type === "highlight"), "nothing shown for a no-progress check");
+  assert.equal(live.gated, false);
+  assert.equal(live.lastInstruction, "Click the Wi-Fi icon.", "the step being worked on is kept");
+  assert.equal(live.stepPending, true);
+
+  // 2. check finds progress: held audio plays once step_done arrives, then the rest streams
+  live.gated = true;
+  live.onMessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: "BBBB", mimeType: "audio/pcm" } }] } } });
+  live.onMessage({ serverContent: { outputTranscription: { text: "Nice. Now click Join." } } });
+  assert.equal(played.length, 0, "held until progress is confirmed");
+  live.onMessage({ toolCall: { functionCalls: [
+    { id: "1", name: "step_done", args: { step: "Opened Wi-Fi" } },
+    { id: "2", name: "highlight", args: { box_2d: [1, 2, 3, 4], label: "Join", instruction: "Click Join." } },
+  ] } });
+  live.onMessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: "CCCC", mimeType: "audio/pcm" } }] } } });
+  live.onMessage({ serverContent: { turnComplete: true } });
+  assert.deepEqual(played, ["BBBB", "CCCC"], "held audio then live audio, in order");
+  assert.ok(events.some((e) => e.type === "step-done"), "progress shown");
+  assert.ok(events.some((e) => e.type === "highlight" && e.label === "Join"), "new highlight shown");
+  assert.ok(events.some((e) => e.type === "sid-caption" && e.final && e.text === "Nice. Now click Join."), "caption shown");
+
+  // 3. the user talks during a check: it's their turn, nothing is held back
+  events.length = 0;
+  played.length = 0;
+  live.gated = true;
+  live.onMessage({ serverContent: { inputTranscription: { text: "What now?" } } });
+  live.onMessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: "DDDD", mimeType: "audio/pcm" } }] } } });
+  assert.deepEqual(played, ["DDDD"], "answer to the user plays straight away");
+  console.log("PASS automatic checks stay silent unless Sid made progress; user turns are never held");
+}

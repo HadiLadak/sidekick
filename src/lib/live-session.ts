@@ -115,6 +115,14 @@ export class LiveSid {
   private speaking = false;
   private stepPending = false;
   private highlightedThisTurn = false;
+  /**
+   * The current turn answers an automatic progress check. Its voice, captions and highlights are
+   * held back until the model reports progress (step_done). If it never does, everything it
+   * produced is dropped unheard: an unchanged screen must never make Sid say "no speech", "unchanged"…
+   */
+  private gated = false;
+  private heldAudio: string[] = [];
+  private heldEvents: LiveEvent[] = [];
   private stopped = false;
   private connected = false;
   private connId = 0;
@@ -355,15 +363,42 @@ export class LiveSid {
     });
   }
 
+  /** Let a held-back automatic-check turn through: it showed real progress. */
+  private openGate() {
+    if (!this.gated) return;
+    this.gated = false;
+    for (const a of this.heldAudio) this.play(a);
+    for (const e of this.heldEvents) {
+      if (e.type === "highlight") {
+        this.stepPending = true;
+        this.lastInstruction = e.instruction;
+      }
+      this.opts.onEvent(e);
+    }
+    this.heldAudio = [];
+    this.heldEvents = [];
+  }
+
   private onMessage(m: LiveServerMessage) {
-    const emit = this.opts.onEvent;
+    const emit = (e: LiveEvent) => (this.gated ? this.heldEvents.push(e) : this.opts.onEvent(e));
+    // The user spoke: this is their turn now, not a silent check
+    if (m.serverContent?.inputTranscription?.text && this.gated) {
+      this.gated = false;
+      this.heldAudio = [];
+      this.heldEvents = [];
+    }
+    // Progress reported: the check turn may speak (step_done may arrive after some audio)
+    if (m.toolCall?.functionCalls?.some((f) => f.name === "step_done")) this.openGate();
     const ru = m.sessionResumptionUpdate;
     if (ru?.resumable && ru.newHandle) this.resumeHandle = ru.newHandle;
     const sc = m.serverContent;
     if (sc?.modelTurn || sc?.outputTranscription || m.toolCall) this.modelBusy = true;
     if (sc?.interrupted) this.flushAudio();
     for (const p of sc?.modelTurn?.parts ?? []) {
-      if (p.inlineData?.data && p.inlineData.mimeType?.startsWith("audio/")) this.play(p.inlineData.data);
+      if (p.inlineData?.data && p.inlineData.mimeType?.startsWith("audio/")) {
+        if (this.gated) this.heldAudio.push(p.inlineData.data);
+        else this.play(p.inlineData.data);
+      }
     }
     if (sc?.outputTranscription?.text) {
       this.sidText += sc.outputTranscription.text;
@@ -375,6 +410,19 @@ export class LiveSid {
       this.taskStarted = true;
       this.userText += sc.inputTranscription.text;
       emit({ type: "user-caption", text: this.userText.trim(), final: false });
+    }
+    if ((sc?.turnComplete || sc?.interrupted) && this.gated) {
+      // An automatic check that found no progress: drop whatever it said, show nothing.
+      this.gated = false;
+      this.heldAudio = [];
+      this.heldEvents = [];
+      this.sidText = "";
+      this.turnAudioSec = 0;
+      this.highlightedThisTurn = false;
+      this.modelBusy = false;
+      if (this.userText) this.opts.onEvent({ type: "user-caption", text: this.userText.trim(), final: true });
+      this.userText = "";
+      return;
     }
     if (sc?.turnComplete || sc?.interrupted) {
       this.modelBusy = false;
@@ -401,8 +449,10 @@ export class LiveSid {
       for (const f of m.toolCall.functionCalls) {
         const a = (f.args ?? {}) as Record<string, unknown>;
         if (f.name === "highlight") {
-          this.stepPending = true;
-          this.lastInstruction = String(a.instruction ?? "");
+          if (!this.gated) {
+            this.stepPending = true;
+            this.lastInstruction = String(a.instruction ?? "");
+          }
           this.highlightedThisTurn = true;
           emit({
             type: "highlight",
@@ -549,8 +599,12 @@ export class LiveSid {
       this.session.sendRealtimeInput({ video: { data: frame.data, mimeType: "image/jpeg" } });
       this.sentFrame = frame;
       this.session.sendClientContent({ turns: [{ role: "user", parts: [{ text:
-        `[Automatic screen progress check. Previous instruction: ${this.lastInstruction.slice(0, 700)}. Inspect the attached latest screen. If it visibly shows the expected result, call step_done and give the next single step with highlight. An already-open menu must not be opened again. Video motion alone is not progress. If unchanged or uncertain, produce no speech at all. Do not say you are waiting, acknowledge this check, repeat the instruction, or ask the user to say done.]`,
+        `[Automatic screen progress check. Previous instruction: ${this.lastInstruction.slice(0, 700)}. Inspect the attached latest screen. If it visibly shows the expected result, call step_done and give the next single step with highlight. An already-open menu must not be opened again. Video motion alone is not progress. If it is unchanged or you are unsure, end your turn without responding. Do not say you are waiting, acknowledge this check, repeat the instruction, or ask the user to say done.]`,
       }] }], turnComplete: true });
+      // Whatever comes back stays unheard unless it reports progress (see openGate)
+      this.gated = true;
+      this.heldAudio = [];
+      this.heldEvents = [];
       this.modelBusy = true;
       this.progressQueued = false;
       this.lastProgressCheck = now;

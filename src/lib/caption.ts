@@ -8,7 +8,9 @@
  */
 const WRITTEN_ONLY = /\s*(?:#{1,6}\s|```|\*\*|__|(?:^|\n)\s*(?:[-*•]|\d+[.)])\s|\n\s*\n)/;
 /** Leaked stage directions from our own prompts ("<no speech{pause}", "[no speech]", "(no_speech)"): never spoken. */
-const STAGE_DIRECTION = /[<[(]\s*no[\s_-]*speech|\{\s*pause\s*\}/i;
+const STAGE_DIRECTION = /[<[(]\s*no[\s_-]*speech|\{\s*pause\s*\}|\bno[\s_-]*speech\b(?=\s*(?:[.!,)\]}>]|$))/i;
+/** A whole caption that is only a meta word ("Unchanged.", "Silence", "No change") was never meant to be heard. */
+const ONLY_META = /^\W*(?:no[\s_-]*speech|silence|silent|unchanged|no change|uncertain|pause|waiting|no response|nothing)\W*$/i;
 
 /** Generous speaking rate: ~22 characters a second, plus slack for the first words. */
 const CHARS_PER_SEC = 22;
@@ -23,6 +25,7 @@ export function cleanCaption(raw: string, audioSeconds: number): string {
     .replace(/[*_#`>|~]+/g, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (ONLY_META.test(s)) return "";
   const max = Math.round(SLACK + audioSeconds * CHARS_PER_SEC);
   if (s.length > max) {
     // End on a sentence or word boundary
