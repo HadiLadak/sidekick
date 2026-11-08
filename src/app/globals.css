@@ -142,7 +142,7 @@
   --mark: #ffd83d;
   --mark-deep: #ffe57a;
   --on-mark: #1b2452;
-  --line: #34407a;
+  --line: #5a68ad;
   --cork: #4a3a2a;
   --cork-dot: #3a2d20;
   --cork-light: #5a4834;
@@ -167,6 +167,11 @@
   --primary: var(--mark);
   --primary-foreground: var(--on-mark);
   color-scheme: dark;
+}
+
+/* Dark mode: cards keep a bold 2px outline (like light mode's ink edges), not just a fill change */
+.dark .ring-1.ring-line {
+  box-shadow: 0 0 0 2px var(--line);
 }
 
 /* Simple mode: bigger type steps and roomier spacing (real tokens, so text stays crisp).
