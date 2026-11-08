@@ -88,6 +88,20 @@ export function SidekickApp() {
     return () => clearTimeout(id);
   }, [notice]);
 
+  // The browser tab says what Sid is doing
+  useEffect(() => {
+    const base = "Sid, your tech sidekick";
+    if (status === "loading") {
+      document.title = "Sid is thinking… • " + base;
+    } else if (status === "result" && result?.mode === "scam_check" && (result.scam.verdict === "scam" || result.scam.verdict === "suspicious")) {
+      document.title = "\u{1F6A8} Scam found • " + base;
+    } else if (status === "live") {
+      document.title = "\u{1F7E2} Live • " + base;
+    } else {
+      document.title = base;
+    }
+  }, [status, result]);
+
   function showResult(r: SidResult, req: { text: string; history: Turn[] }) {
     setResult(r);
     setText("");
