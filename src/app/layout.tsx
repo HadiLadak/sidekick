@@ -25,14 +25,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2f4fc" },
-    { media: "(prefers-color-scheme: dark)", color: "#121836" },
-  ],
+  // The app opens light whatever the device setting, so the browser bar matches it
+  themeColor: "#f2f4fc",
 };
 
 // Applies saved theme, language and Simple mode before paint so nothing flashes.
-const boot = `(function(){try{var d=document.documentElement;var s=JSON.parse(localStorage.getItem('sid:prefs')||'{}');var dark=s.theme?s.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;d.classList.toggle('dark',dark);d.dataset.simple=String(s.simple!==false);if(s.lang){d.lang=s.lang;d.dir=(s.lang==='ur'||s.lang==='ar')?'rtl':'ltr';}}catch(e){}})();`;
+const boot = `(function(){try{var d=document.documentElement;var s=JSON.parse(localStorage.getItem('sid:prefs')||'{}');var dark=s.theme==='dark';d.classList.toggle('dark',dark);d.dataset.simple=String(s.simple!==false);if(s.lang){d.lang=s.lang;d.dir=(s.lang==='ur'||s.lang==='ar')?'rtl':'ltr';}}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

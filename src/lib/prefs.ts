@@ -11,13 +11,14 @@ export interface Prefs {
 
 const KEY = "sid:prefs";
 // Simple mode is the default: big type, fewer choices. People can switch it off for more detail.
-const DEFAULT: Prefs = { lang: "en", simple: true, theme: null };
+// Light is the default look; dark only for people who pick it.
+const DEFAULT: Prefs = { lang: "en", simple: true, theme: "light" };
 
 function read(): Prefs {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || "{}");
     const lang = LANGS.some((l) => l.code === raw.lang) ? raw.lang : guessLang();
-    return { lang, simple: raw.simple !== false, theme: raw.theme === "dark" || raw.theme === "light" ? raw.theme : null };
+    return { lang, simple: raw.simple !== false, theme: raw.theme === "dark" || raw.theme === "light" ? raw.theme : "light" };
   } catch {
     return DEFAULT;
   }
