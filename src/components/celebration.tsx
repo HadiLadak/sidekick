@@ -80,7 +80,7 @@ export function Celebration({
             type="button"
             autoFocus
             onClick={onStartOver}
-            className="h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark press"
+            className="h-14 w-full rounded-full btn-ink text-lg font-bold"
           >
             {t.startOver}
           </button>

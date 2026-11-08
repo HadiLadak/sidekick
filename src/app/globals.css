@@ -85,6 +85,15 @@
   --mark-deep: #f2c200;
   --on-mark: #1b2452;
   --line: #d3d9f0;
+  /* Sid's corkboard: the example questions are notes pinned to it */
+  --cork: #d9b58c;
+  --cork-dot: #c49a6c;
+  --cork-light: #e7cba8;
+  --note-1: #fffdf6;
+  --note-2: #e6eeff;
+  --note-3: #ffe8e4;
+  --note-4: #e2f3e9;
+  --pin: #b4232a;
   /* hard sticker edge + offset shadow */
   --edge: #1b2452;
   --danger: #b4232a;
@@ -134,6 +143,14 @@
   --mark-deep: #ffe57a;
   --on-mark: #1b2452;
   --line: #34407a;
+  --cork: #4a3a2a;
+  --cork-dot: #3a2d20;
+  --cork-light: #5a4834;
+  --note-1: #f4f1e8;
+  --note-2: #dde6fb;
+  --note-3: #f8dfda;
+  --note-4: #d9eee1;
+  --pin: #e0565c;
   --edge: #050818;
   --danger: #ff9a94;
   --danger-bg: #3d1a2b;
@@ -236,6 +253,56 @@ html[data-simple="true"] .site-header {
     transition:
       transform 0.12s ease-out,
       box-shadow 0.12s ease-out;
+  }
+  /* Primary buttons are ink. Yellow is kept for one thing: Start live help. */
+  .btn-ink {
+    background-color: var(--ink);
+    color: var(--paper);
+  }
+  .btn-ink:hover:not(:disabled) {
+    background-color: color-mix(in oklab, var(--ink) 86%, var(--sky));
+  }
+  /* The corkboard and its pinned notes */
+  .cork {
+    background-color: var(--cork);
+    background-image:
+      radial-gradient(var(--cork-dot) 1.2px, transparent 1.6px),
+      radial-gradient(var(--cork-light) 1px, transparent 1.4px);
+    background-size: 13px 13px, 19px 19px;
+    background-position: 0 0, 6px 9px;
+    box-shadow: inset 0 0 0 6px color-mix(in oklab, var(--cork-dot) 70%, var(--ink));
+  }
+  .note {
+    --fold: 1.4rem;
+    color: #1b2452; /* notes are always light paper, so the writing stays dark in both themes */
+    position: relative;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--fold)), calc(100% - var(--fold)) 100%, 0 100%);
+    border-radius: 0.25rem;
+  }
+  /* the folded-over corner */
+  .note::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: var(--fold);
+    height: var(--fold);
+    background: linear-gradient(315deg, transparent 50%, color-mix(in oklab, currentColor 14%, var(--note-1)) 50%);
+    border-top-left-radius: 0.2rem;
+  }
+  [dir="rtl"] .note {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, var(--fold) 100%, 0 calc(100% - var(--fold)));
+  }
+  [dir="rtl"] .note::after {
+    right: auto;
+    left: 0;
+    background: linear-gradient(45deg, transparent 50%, color-mix(in oklab, currentColor 14%, var(--note-1)) 50%);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0.2rem;
+  }
+  .pin {
+    background: radial-gradient(circle at 35% 30%, #fff8 0 18%, var(--pin) 22% 100%);
+    box-shadow: 1px 2px 0 rgb(0 0 0 / 0.35);
   }
   /* Shadows: only two, both hard-edged. .sticker = tappable card, .press = primary button */
   .press {

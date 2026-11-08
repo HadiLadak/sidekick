@@ -1,6 +1,6 @@
 "use client";
 
-import { Radio, RotateCcw, ShieldCheck } from "lucide-react";
+import { LockKeyhole, Radio, RotateCcw, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { type Demo } from "@/lib/demos";
 import { LIVE_STRINGS, type LiveCopy } from "@/lib/live-i18n";
@@ -248,23 +248,23 @@ export function SidekickApp() {
           status === "live" ? "max-w-6xl" : split ? "max-w-3xl lg:max-w-6xl" : "max-w-3xl",
         )}
       >
-        {split && (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,25rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
-            {/* LEFT: Sid says hello and offers live help. Once Sid is answering, the hello steps aside
-                so there is only one Sid conversation (on the right). */}
-            <div className={cn("flex min-w-0 flex-col gap-6", status !== "idle" && "hidden lg:flex")}>
-              {status === "idle" && (
-                <section className="flex items-end gap-2 sm:gap-3" aria-labelledby="hello">
-                  <Sid mood={heroMood} className={cn("-mb-1", prefs.simple ? "size-20 sm:size-28" : "size-20 sm:size-24")} label="Sid" track />
-                  <div className="bubble flex-1 bg-surface px-4 pt-3 pb-4 text-ink ring-1 ring-line sm:px-5">
-                    <p id="hello" className="font-hand text-xl font-bold text-ink-soft">
-                      {t.hello}
-                    </p>
-                    <h1 className="mt-1 text-2xl leading-tight font-bold text-balance">{t.ask}</h1>
-                  </div>
-                </section>
-              )}
+        {split && status === "idle" && (
+          <section className="flex items-end gap-3 sm:gap-5" aria-labelledby="hello">
+            <Sid mood={heroMood} className="-mb-1 size-20 sm:size-28 lg:size-32" label="Sid" track />
+            <div className="bubble min-w-0 flex-1 bg-surface px-5 pt-4 pb-5 text-ink ring-1 ring-line sm:px-7 lg:flex-none">
+              <p id="hello" className="font-hand text-xl font-bold text-ink-soft">
+                {t.hello}
+              </p>
+              <h1 className="mt-1 max-w-[22ch] font-hand text-3xl leading-[1.12] font-bold text-balance sm:text-4xl lg:text-5xl">{t.ask}</h1>
+            </div>
+          </section>
+        )}
 
+        {split && (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
+            {/* LEFT: live help, how Sid helps, and why it's safe. Sticks while the right side scrolls.
+                Once Sid is answering, their question shows here and Sid's answer on the right. */}
+            <div className={cn("flex min-w-0 flex-col gap-6 lg:sticky lg:top-6", status !== "idle" && "hidden lg:flex")}>
               {/* While Sid answers: their question stays on this side, Sid's answer is on the right */}
               {(status === "result" || status === "error") && lastRequest && (
                 <section className="flex flex-col items-end gap-1" aria-label={t.youAsked}>
@@ -286,6 +286,8 @@ export function SidekickApp() {
               )}
 
               {canLive && <LiveCard lc={lc} t={t} big={prefs.simple && status === "idle"} onStart={() => setStatus("live-pre")} />}
+              {status === "idle" && <HowItWorks t={t} />}
+              <TrustStrip t={t} />
             </div>
 
             {/* RIGHT: the screenshot and question side. What they add and what Sid answers sit at
@@ -317,7 +319,7 @@ export function SidekickApp() {
                       <button
                         type="button"
                         onClick={() => ask(lastRequest)}
-                        className="press h-12 rounded-full bg-mark px-6 font-bold text-on-mark"
+                        className="btn-ink h-12 rounded-full px-6 font-bold"
                       >
                         {t.tryAgain}
                       </button>
@@ -383,13 +385,13 @@ export function SidekickApp() {
                     onNotice={setNotice}
                     hideThumb={status === "idle"}
                   />
-                  <p className="flex items-center gap-2 px-2 text-sm text-ink-soft">
+                  <p className="flex items-center gap-2 px-2 text-sm text-ink-soft lg:hidden">
                     <ShieldCheck className="size-4 shrink-0 text-safe" aria-hidden="true" />
                     {t.neverAsk}
                   </p>
                 </div>
               )}
-              {status === "idle" && <p className="order-last px-1 text-sm text-ink-soft">{t.privacyNote}</p>}
+              {status === "idle" && <p className="order-last px-1 text-sm text-ink-soft lg:hidden">{t.privacyNote}</p>}
             </div>
           </div>
         )}
@@ -462,35 +464,35 @@ export function SidekickApp() {
 function LiveCard({ lc, t, big, onStart }: { lc: LiveCopy; t: Strings; big: boolean; onStart: () => void }) {
   if (!big) {
     return (
-      <section aria-labelledby="live-cta" className="flex flex-wrap items-center gap-3 rounded-2xl bg-ink p-4 text-paper dark:bg-surface dark:text-ink dark:ring-1 dark:ring-line">
-        <span className="relative grid size-11 shrink-0 place-items-center rounded-xl bg-mark text-on-mark" aria-hidden="true">
+      <section aria-labelledby="live-cta" className="flex flex-wrap items-center gap-3 rounded-2xl bg-surface p-4 text-ink ring-2 ring-ink">
+        <span className="relative grid size-11 shrink-0 place-items-center rounded-xl bg-ink text-paper" aria-hidden="true">
           <Radio className="size-5" />
-          <span className="absolute -top-1 -end-1 size-3 rounded-full bg-danger ring-2 ring-ink motion-safe:animate-pulse dark:ring-surface" />
+          <span className="absolute -top-1 -end-1 size-3 rounded-full bg-danger ring-2 ring-surface motion-safe:animate-pulse" />
         </span>
         <div className="min-w-0 flex-1">
           <h2 id="live-cta" className="text-lg leading-tight font-bold">
             {lc.cta}
           </h2>
-          <p className="text-sm opacity-85">{lc.ctaSub}</p>
+          <p className="text-sm text-ink-soft">{lc.ctaSub}</p>
         </div>
-        <button type="button" onClick={onStart} className="h-11 rounded-full bg-mark px-5 font-bold text-on-mark">
+        <button type="button" onClick={onStart} className="press h-11 basis-full rounded-full bg-mark px-5 font-bold text-on-mark">
           {lc.ctaButton}
         </button>
       </section>
     );
   }
   return (
-    <section aria-labelledby="live-cta" className="rounded-3xl bg-ink p-5 text-paper dark:bg-surface dark:text-ink dark:ring-1 dark:ring-line">
+    <section aria-labelledby="live-cta" className="rounded-3xl bg-surface p-5 text-ink ring-2 ring-ink">
       <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1">
-          <span className="relative mb-3 grid size-12 place-items-center rounded-xl bg-mark text-on-mark" aria-hidden="true">
+          <span className="relative mb-3 grid size-12 place-items-center rounded-xl bg-ink text-paper" aria-hidden="true">
             <Radio className="size-6" />
-            <span className="absolute -top-1 -end-1 size-3.5 rounded-full bg-danger ring-2 ring-ink motion-safe:animate-pulse dark:ring-surface" />
+            <span className="absolute -top-1 -end-1 size-3.5 rounded-full bg-danger ring-2 ring-surface motion-safe:animate-pulse" />
           </span>
           <h2 id="live-cta" className="text-2xl leading-tight font-bold text-balance">
             {lc.cta}
           </h2>
-          <p className="mt-2 opacity-85 text-pretty">{lc.ctaSub}</p>
+          <p className="mt-2 text-ink-soft text-pretty">{lc.ctaSub}</p>
         </div>
         {/* A taste of what Sid does: the ring on the exact button */}
         <div className="h-36 w-24 shrink-0 rotate-3 overflow-hidden rounded-2xl sm:h-44 sm:w-32" aria-hidden="true">
@@ -501,11 +503,11 @@ function LiveCard({ lc, t, big, onStart }: { lc: LiveCopy; t: Strings; big: bool
             box={[66, 622, 111, 706]}
             hereText={{ tap: t.tapHere, click: t.clickHere }}
             alt=""
-            className="w-full border-[3px] border-mark shadow-none [&_.tap-media]:max-h-none [&_.tap-media]:w-full"
+            className="w-full border-[3px] border-ink shadow-none [&_.tap-media]:max-h-none [&_.tap-media]:w-full"
           />
         </div>
       </div>
-      <button type="button" onClick={onStart} className="mt-5 h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark transition-transform hover:-translate-y-0.5">
+      <button type="button" onClick={onStart} className="press mt-5 h-14 w-full rounded-full bg-mark text-lg font-bold text-on-mark">
         {lc.ctaButton}
       </button>
     </section>
@@ -531,5 +533,42 @@ function ScreenshotStage({ image, line }: { image: PreparedImage; line: string }
         )}
       />
     </section>
+  );
+}
+
+/** Three steps, in order: what happens when you ask Sid. */
+function HowItWorks({ t }: { t: Strings }) {
+  return (
+    <section aria-labelledby="how-title" className="hidden flex-col gap-3 px-1 lg:flex">
+      <h2 id="how-title" className="font-hand text-xl font-bold text-ink">
+        {t.howTitle}
+      </h2>
+      <ol className="flex flex-col gap-3">
+        {t.howSteps.map((step, i) => (
+          <li key={i} className="flex items-start gap-3 text-ink">
+            <span className="grid size-7 shrink-0 place-items-center rounded-full font-hand font-bold ring-2 ring-ink" aria-hidden="true">
+              {i + 1}
+            </span>
+            <span className="pt-0.5">{step}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** Why it's safe to use Sid, said once, plainly. */
+function TrustStrip({ t }: { t: Strings }) {
+  return (
+    <ul className="hidden flex-col gap-2 rounded-2xl bg-safe-bg p-4 text-sm text-ink lg:flex">
+      <li className="flex items-start gap-2">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-safe" aria-hidden="true" />
+        {t.neverAsk}
+      </li>
+      <li className="flex items-start gap-2">
+        <LockKeyhole className="mt-0.5 size-4 shrink-0 text-safe" aria-hidden="true" />
+        {t.privacyNote}
+      </li>
+    </ul>
   );
 }

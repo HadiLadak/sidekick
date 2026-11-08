@@ -31,7 +31,7 @@ import { Sid, type Mood } from "./sid";
 import { TapSpot } from "./tap-spot";
 
 const MODE_STYLE: Record<Mode, { icon: typeof Pointer; chip: string }> = {
-  show_me: { icon: Pointer, chip: "bg-mark/35 text-ink" },
+  show_me: { icon: Pointer, chip: "bg-surface-2 text-ink" },
   fix_it: { icon: Wrench, chip: "bg-fix-bg text-fix" },
   scam_check: { icon: ShieldAlert, chip: "bg-danger-bg text-danger" },
   explain_it: { icon: BookOpenText, chip: "bg-learn-bg text-learn" },
@@ -199,7 +199,7 @@ export function ResultView({
               <ul className="mt-2 flex flex-col gap-2">
                 {r.explain.key_points.map((k, i) => (
                   <li key={i} className="flex gap-2 text-lg text-ink">
-                    <span className="mt-3 h-1.5 w-4 shrink-0 -rotate-6 rounded-full bg-mark ring-1 ring-ink/20" aria-hidden="true" />
+                    <span className="mt-3 h-1.5 w-4 shrink-0 -rotate-6 rounded-full bg-ink" aria-hidden="true" />
                     <span>{k}</span>
                   </li>
                 ))}
@@ -211,7 +211,7 @@ export function ResultView({
 
       {/* The big instruction for the current step */}
       {showSteps && current && (
-        <section lang={r.language} dir={dir} aria-labelledby="sid-step" className="flex flex-col gap-3 rounded-2xl border-2 border-mark bg-mark/15 p-4 sm:p-5">
+        <section lang={r.language} dir={dir} aria-labelledby="sid-step" className="flex flex-col gap-3 rounded-2xl bg-surface ring-2 ring-ink p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <p className="font-hand text-lg font-bold text-ink-soft" aria-live="polite">
               {r.mode === "fix_it" && <span className="me-2">{t.howToFix}:</span>}
@@ -223,7 +223,7 @@ export function ResultView({
                   key={i}
                   className={cn(
                     "h-1.5 flex-1 rounded-full transition-colors",
-                    i < step ? "bg-ink" : i === step ? "bg-mark ring-1 ring-ink" : "bg-surface-2",
+                    i < step ? "bg-ink" : i === step ? "bg-sky" : "bg-surface-2",
                   )}
                 />
               ))}
@@ -296,7 +296,7 @@ export function ResultView({
                   aria-current={i === step ? "step" : undefined}
                   className={cn(
                     "flex w-full items-start gap-3 rounded-xl px-3 py-2 text-start text-ink",
-                    i === step ? "bg-mark/30 font-bold" : "hover:bg-surface-2",
+                    i === step ? "bg-sky-bg font-bold" : "hover:bg-surface-2",
                   )}
                 >
                   <span
@@ -345,7 +345,7 @@ export function ResultView({
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              className="flex h-14 items-center justify-center gap-2 rounded-full bg-mark px-6 text-lg font-bold text-on-mark press transition-transform disabled:opacity-50"
+              className="flex h-14 items-center justify-center gap-2 rounded-full btn-ink px-6 text-lg font-bold transition-transform disabled:opacity-50"
             >
               <Camera className="size-5" aria-hidden="true" />
               {t.nextStep}

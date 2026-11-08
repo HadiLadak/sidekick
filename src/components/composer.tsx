@@ -187,7 +187,7 @@ export function Composer({
           onClick={() => fileRef.current?.click()}
           className="group mb-3 flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-line bg-paper p-4 text-start transition-colors hover:border-sky hover:bg-sky-bg"
         >
-          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-ink text-mark dark:bg-mark dark:text-on-mark transition-transform group-hover:-rotate-6">
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-ink text-paper transition-transform group-hover:-rotate-6">
             <ImagePlus className="size-7" aria-hidden="true" />
           </span>
           <span className="flex flex-col">
@@ -247,7 +247,7 @@ export function Composer({
         <button
           type="submit"
           disabled={!text.trim() && !image}
-          className="ms-auto h-12 rounded-full bg-mark px-6 text-lg font-bold text-on-mark press transition-transform disabled:cursor-not-allowed disabled:opacity-45"
+          className="ms-auto h-12 rounded-full btn-ink px-6 text-lg font-bold transition-transform disabled:cursor-not-allowed disabled:opacity-45"
         >
           {t.send}
         </button>

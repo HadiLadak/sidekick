@@ -61,8 +61,8 @@ export function Header({
           className="flex items-center gap-2 px-3 leading-tight outline-offset-[-3px] hover:bg-surface-2"
         >
           <span className="whitespace-nowrap">{t.simple}</span>
-          <span aria-hidden="true" className="relative h-6 w-10 rounded-full bg-surface-2 ring-1 ring-line transition-colors in-aria-checked:bg-mark in-aria-checked:ring-ink">
-            <span className="absolute top-1 start-1 size-4 rounded-full bg-ink-soft transition-transform duration-200 in-aria-checked:translate-x-4 in-aria-checked:bg-ink rtl:in-aria-checked:-translate-x-4" />
+          <span aria-hidden="true" className="relative h-6 w-10 rounded-full bg-surface-2 ring-1 ring-line transition-colors in-aria-checked:bg-ink in-aria-checked:ring-ink">
+            <span className="absolute top-1 start-1 size-4 rounded-full bg-ink-soft transition-transform duration-200 in-aria-checked:translate-x-4 in-aria-checked:bg-paper rtl:in-aria-checked:-translate-x-4" />
           </span>
         </button>
 

@@ -40,6 +40,8 @@ const en = {
   },
   gotScreenshot: "Got your screenshot. Now tell me in a few words what you were trying to do.",
   allSteps: "All the steps",
+  howTitle: "How Sid helps",
+  howSteps: ["Show Sid your screen, or send a screenshot.", "Sid points to the exact button to press.", "You do it, one step at a time."],
   peopleAsk: "Things people ask me",
   modeExample: {
     show_me: "How do I video call my grandson?",
@@ -132,6 +134,8 @@ const fr: Strings = {
   },
   gotScreenshot: "J'ai votre capture. Dites-moi en quelques mots ce que vous essayiez de faire.",
   allSteps: "Toutes les étapes",
+  howTitle: "Comment Sid aide",
+  howSteps: ["Montrez votre écran à Sid, ou envoyez une capture.", "Sid montre le bouton exact à toucher.", "Vous le faites, une étape à la fois."],
   peopleAsk: "Ce qu'on me demande",
   modeExample: {
     show_me: 'Comment faire un appel vidéo à mon petit-fils?',
@@ -222,6 +226,8 @@ const es: Strings = {
   },
   gotScreenshot: "Tengo tu captura. Cuéntame en pocas palabras qué intentabas hacer.",
   allSteps: "Todos los pasos",
+  howTitle: "Cómo ayuda Sid",
+  howSteps: ["Muéstrale tu pantalla a Sid o envía una captura.", "Sid te señala el botón exacto.", "Tú lo haces, paso a paso."],
   peopleAsk: "Lo que me preguntan",
   modeExample: {
     show_me: "¿Cómo hago una videollamada a mi nieto?",
@@ -312,6 +318,8 @@ const ur: Strings = {
   },
   gotScreenshot: "آپ کا اسکرین شاٹ مل گیا۔ اب چند الفاظ میں بتائیں کہ آپ کیا کرنا چاہ رہے تھے۔",
   allSteps: "تمام مراحل",
+  howTitle: "سِڈ کیسے مدد کرتا ہے",
+  howSteps: ["سِڈ کو اپنی اسکرین دکھائیں یا اسکرین شاٹ بھیجیں۔", "سِڈ آپ کو بالکل صحیح بٹن دکھاتا ہے۔", "آپ ایک ایک قدم کر کے خود کرتے ہیں۔"],
   peopleAsk: "لوگ مجھ سے یہ پوچھتے ہیں",
   modeExample: {
     show_me: "میں اپنے پوتے کو ویڈیو کال کیسے کروں؟",
@@ -402,6 +410,8 @@ const ar: Strings = {
   },
   gotScreenshot: "وصلتني لقطة الشاشة. أخبرني بكلمات قليلة ماذا كنت تحاول أن تفعل.",
   allSteps: "كل الخطوات",
+  howTitle: "كيف يساعدك سِد",
+  howSteps: ["اعرض شاشتك على سِد أو أرسل لقطة شاشة.", "يشير سِد إلى الزر الصحيح تمامًا.", "وأنت تنفّذ خطوة بخطوة."],
   peopleAsk: "أشياء يسألونني عنها",
   modeExample: {
     show_me: "كيف أجري مكالمة فيديو مع حفيدي؟",

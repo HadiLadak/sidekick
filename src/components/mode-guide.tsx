@@ -3,12 +3,12 @@ import type { Strings } from "@/lib/i18n";
 import type { Mode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-// Only scams get a colour of their own; the rest stay in the core ink / yellow / blue.
-const ITEMS: { mode: Mode; icon: typeof Pointer; tone: string }[] = [
-  { mode: "show_me", icon: Pointer, tone: "bg-mark text-on-mark" },
-  { mode: "scam_check", icon: ShieldAlert, tone: "bg-danger-bg text-danger" },
-  { mode: "fix_it", icon: Wrench, tone: "bg-surface-2 text-ink" },
-  { mode: "explain_it", icon: BookOpenText, tone: "bg-sky-bg text-sky" },
+// Each note: its own paper colour and its own slight angle, like notes pinned by hand.
+const ITEMS: { mode: Mode; icon: typeof Pointer; tone: string; paper: string; tilt: string }[] = [
+  { mode: "show_me", icon: Pointer, tone: "bg-surface-2 text-ink", paper: "bg-[var(--note-1)]", tilt: "-rotate-2" },
+  { mode: "scam_check", icon: ShieldAlert, tone: "bg-danger-bg text-danger", paper: "bg-[var(--note-3)]", tilt: "rotate-[1.5deg]" },
+  { mode: "fix_it", icon: Wrench, tone: "bg-surface-2 text-ink", paper: "bg-[var(--note-4)]", tilt: "rotate-1" },
+  { mode: "explain_it", icon: BookOpenText, tone: "bg-sky-bg text-sky", paper: "bg-[var(--note-2)]", tilt: "-rotate-[2.5deg]" },
 ];
 
 /**
@@ -43,20 +43,19 @@ export function ModeGuide({
         {t.peopleAsk}
       </h3>
       {simple ? (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {ITEMS.map(({ mode, icon: Icon, tone }) => (
-            <li key={mode}>
+        <ul className="cork grid gap-x-5 gap-y-6 rounded-3xl p-5 pt-6 sm:grid-cols-2 sm:p-6">
+          {ITEMS.map(({ mode, icon: Icon, paper, tilt }) => (
+            <li key={mode} className={cn("relative drop-shadow-[2px_4px_0_rgb(0_0_0_/_0.22)] transition-transform hover:rotate-0", tilt)}>
+              <span className="pin absolute -top-2 left-1/2 z-10 size-4 -translate-x-1/2 rounded-full" aria-hidden="true" />
               <button
                 type="button"
                 onClick={() => onPick(t.modeExample[mode])}
                 {...hover(mode)}
-                className="sticker flex h-full w-full flex-col items-start gap-2 rounded-2xl bg-surface p-4 text-start hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 active:shadow-none"
+                className={cn("note flex h-full w-full flex-col items-start gap-2 p-4 pt-5 pe-6 text-start", paper)}
               >
-                <span className={cn("grid size-10 place-items-center rounded-xl", tone)} aria-hidden="true">
-                  <Icon className="size-5" />
-                </span>
-                <span className="text-lg leading-snug font-bold text-ink">&ldquo;{t.modeExample[mode]}&rdquo;</span>
-                <span className="text-sm text-ink-soft">{t.modeHint[mode]}</span>
+                <Icon className={cn("size-6", mode === "scam_check" && "text-[var(--pin)]")} aria-hidden="true" />
+                <span className="font-hand text-xl leading-snug font-bold">&ldquo;{t.modeExample[mode]}&rdquo;</span>
+                <span className="text-sm opacity-75">{t.modeHint[mode]}</span>
               </button>
             </li>
           ))}

@@ -108,7 +108,7 @@ export function FamilySheet({
             <button
               type="button"
               onClick={share}
-              className="flex h-12 flex-[1_1_9rem] items-center justify-center gap-2 rounded-full whitespace-nowrap bg-mark px-5 font-bold text-on-mark press"
+              className="flex h-12 flex-[1_1_9rem] items-center justify-center gap-2 rounded-full whitespace-nowrap btn-ink px-5 font-bold"
             >
               <Share2 className="size-5" aria-hidden="true" />
               {t.share}
